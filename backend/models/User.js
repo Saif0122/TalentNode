@@ -4,12 +4,14 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Please add a name']
+    required: [true, 'Please add a name'],
+    trim: true
   },
   email: {
     type: String,
     required: [true, 'Please add an email'],
     unique: true,
+    lowercase: true, // Internal normalization
     match: [
       /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
       'Please add a valid email'
@@ -17,25 +19,36 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+    enum: ['admin', 'recruiter', 'candidate', 'user'],
+    default: 'candidate'
+  },
+  provider: {
+    type: String,
+    enum: ['credentials', 'google'],
+    default: 'credentials'
   },
   password: {
     type: String,
-    required: [true, 'Please add a password'],
-    minlength: 6,
+    required: function() {
+      // password is only required if provider is credentials
+      return this.provider === 'credentials';
+    },
+    minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
   createdAt: {
     type: Date,
     default: Date.now
   }
+}, {
+  timestamps: true,
+  bufferCommands: false
 });
 
 // Encrypt password using bcrypt
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function() {
   if (!this.isModified('password')) {
-    next();
+    return;
   }
 
   const salt = await bcrypt.genSalt(10);

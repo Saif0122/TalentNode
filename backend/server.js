@@ -1,27 +1,27 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+
+// Set Mongoose options globally before loading any models
+mongoose.set('bufferCommands', false);
+
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
+const connectDB = require('./config/db');
+
+// Route files
+const authRoutes = require('./routes/authRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-// MongoDB Connection
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
-const cookieParser = require('cookie-parser');
 app.use(helmet());
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
@@ -30,28 +30,68 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-// Static folder for file uploads (optional, for dev purposes)
+// Static folder
 app.use('/uploads', express.static('uploads'));
 
-// Routes
-const authRoutes = require('./routes/authRoutes');
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'TalentNode Backend is healthy' });
-});
-
+// Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api', candidateRoutes);
 app.use('/api/jobs', jobRoutes);
 
-// Error Handling Middleware
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'success', message: 'TalentNode Backend is healthy' });
+});
+
+// Generic Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
-    status: 'fail', 
-    error: err.message || 'Something went wrong!' 
+  res.status(err.statusCode || 500).json({
+    status: 'fail',
+    error: err.message || 'Server Error'
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const PORT = process.env.PORT || 5001;
+
+const startServer = async () => {
+  try {
+    // Connect to Database
+    await connectDB();
+
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    });
+
+    // Handle Graceful Shutdown
+    const shutdown = (signal) => {
+      console.log(`\n${signal} received. Shutting down gracefully...`);
+      server.close(() => {
+        const mongoose = require('mongoose');
+        mongoose.connection.close(false, () => {
+          console.log('MongoDB connection closed.');
+          process.exit(0);
+        });
+      });
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+
+    process.on('unhandledRejection', (err) => {
+      console.error(`Error: ${err.message}`);
+      server.close(() => process.exit(1));
+    });
+
+  } catch (error) {
+    console.error(`Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+process.on('uncaughtException', (err) => {
+  console.error(`Uncaught Exception: ${err.message}`);
+  process.exit(1);
 });

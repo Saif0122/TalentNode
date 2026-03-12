@@ -3,6 +3,8 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const candidateController = require('../controllers/candidateController');
+const uploadRedirectController = require('../controllers/uploadRedirectController');
+
 
 // Multer configuration for temporary file storage
 const storage = multer.diskStorage({
@@ -21,7 +23,8 @@ const upload = multer({
 });
 
 // Route for resume upload
-router.post('/upload-resume', upload.single('resume'), candidateController.uploadResume);
+router.post('/upload-resume', upload.single('resume'), uploadRedirectController.uploadResume);
+
 
 // New Routes
 router.get('/candidates', candidateController.getCandidates);

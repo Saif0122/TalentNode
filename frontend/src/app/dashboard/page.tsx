@@ -61,7 +61,10 @@ const MatchScoreRing = ({ score }: { score: number }) => {
   );
 };
 
+import { useSession } from 'next-auth/react';
+
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
   const { data: candidatesData, isLoading: candidatesLoading } = useCandidates({ limit: 5 });
   const { data: jobsData, isLoading: jobsLoading } = useJobs();
 
@@ -73,11 +76,13 @@ export default function DashboardPage() {
         {/* Breadcrumbs & Greeting */}
         <div className="flex flex-col gap-1">
           <nav className="flex text-[10px] uppercase tracking-widest text-slate-400 gap-2 items-center mb-2 font-black">
-            <span>Recruiter Portal</span>
+            <span>{session?.user?.role || 'Guest'} Portal</span>
             <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'wght' 700" }}>chevron_right</span>
             <span className="text-primary font-black">Dashboard</span>
           </nav>
-          <h2 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">Welcome back, Sarah.</h2>
+          <h2 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+            Welcome back, {session?.user?.name ? session.user.name.split(' ')[0] : 'User'}.
+          </h2>
           <p className="text-slate-500 font-bold uppercase tracking-tight text-xs">Here's what's happening with your pipeline today.</p>
         </div>
 
