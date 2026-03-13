@@ -1,4 +1,5 @@
 const Job = require('../models/Job');
+const { createNotification } = require('./notificationController');
 
 /**
  * @openapi
@@ -34,6 +35,14 @@ const createJob = async (req, res) => {
 
     const job = new Job({ title, description, requiredSkills, location });
     await job.save();
+
+    // Broadcast notification that a new job was posted
+    await createNotification({
+      title: 'New Job Posted',
+      message: `The role "${title}" was successfully created.`,
+      type: 'success',
+      link: '/jobs'
+    });
 
     res.status(201).json({
       status: 'success',

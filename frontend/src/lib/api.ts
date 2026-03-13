@@ -1,8 +1,6 @@
-import axios from 'axios';
+import customApi from './axios';
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api', // Adjusted to 5001 based on backend logs
-});
+const api = customApi;
 
 // Centralized error handling interceptor
 api.interceptors.response.use(
@@ -26,6 +24,26 @@ export const candidateApi = {
 export const jobApi = {
   getAll: () => api.get('/jobs').then(res => res.data),
   create: (data: any) => api.post('/jobs', data).then(res => res.data),
+};
+
+export const dashboardApi = {
+  getStats: () => api.get('/dashboard/stats').then(res => res.data),
+  getActivity: () => api.get('/dashboard/activity').then(res => res.data),
+  getTopSkills: () => api.get('/dashboard/top-skills').then(res => res.data),
+  getConversion: () => api.get('/dashboard/conversion').then(res => res.data),
+};
+
+export const notificationApi = {
+  getNotifications: () => api.get('/notifications').then(res => res.data),
+  markAsRead: (id: string) => api.put(`/notifications/${id}/read`).then(res => res.data),
+  markAllAsRead: () => api.put('/notifications/read-all').then(res => res.data),
+};
+
+export const userApi = {
+  getProfile: () => api.get('/users/me').then(res => res.data),
+  updateProfile: (data: any) => api.patch('/users/me', data).then(res => res.data),
+  updatePassword: (data: any) => api.patch('/users/password', data).then(res => res.data),
+  updateNotifications: (data: any) => api.patch('/users/notifications', data).then(res => res.data),
 };
 
 export default api;

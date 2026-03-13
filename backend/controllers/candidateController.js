@@ -1,6 +1,7 @@
 const candidateService = require('../services/candidateService');
 const ingestionService = require('../services/ingest.js');
 const matcherService = require('../services/matcher.js');
+const { createNotification } = require('./notificationController');
 const Candidate = require('../models/Candidate');
 const Job = require('../models/Job');
 const fs = require('fs');
@@ -48,6 +49,16 @@ const uploadResume = async (req, res) => {
     };
 
     const savedCandidate = await candidateService.saveCandidate(candidateData);
+
+    // Broadcast a notification that a new candidate profile was imported
+    if (file) {
+      await createNotification({
+        title: 'Resume Parsed',
+        message: `Successfully extracted profile for ${savedCandidate.name}.`,
+        type: 'success',
+        link: `/candidates/${savedCandidate._id}`
+      });
+    }
 
     res.status(201).json({
       status: 'success',

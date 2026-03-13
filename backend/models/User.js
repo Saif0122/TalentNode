@@ -22,6 +22,48 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'recruiter', 'candidate', 'user'],
     default: 'candidate'
   },
+  phone: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  company: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  jobTitle: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  location: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  bio: {
+    type: String,
+    default: ''
+  },
+  avatar: {
+    type: String,
+    default: ''
+  },
+  preferredLanguage: {
+    type: String,
+    default: 'en'
+  },
+  timezone: {
+    type: String,
+    default: 'UTC'
+  },
+  notificationPreferences: {
+    emailAlerts: { type: Boolean, default: true },
+    pushNotifications: { type: Boolean, default: true },
+    marketingEmails: { type: Boolean, default: false },
+    jobUpdates: { type: Boolean, default: true }
+  },
   provider: {
     type: String,
     enum: ['credentials', 'google'],

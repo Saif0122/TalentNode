@@ -7,6 +7,7 @@ import { CandidateList } from '@/components/candidate/CandidateList';
 import { Sparkline } from '@/components/visualization/Sparkline';
 import { useCandidates } from '@/hooks/useCandidates';
 import { useJobs } from '@/hooks/useJobs';
+import { useDashboardStats, useDashboardActivity } from '@/hooks/useDashboard';
 import { cn } from '@/lib/utils';
 
 const StatCard = ({ title, value, trend, sparkline }: any) => (
@@ -65,10 +66,13 @@ import { useSession } from 'next-auth/react';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const { data: candidatesData, isLoading: candidatesLoading } = useCandidates({ limit: 5 });
-  const { data: jobsData, isLoading: jobsLoading } = useJobs();
-
-  const candidates = candidatesData?.data?.candidates || [];
+  const { data: statsData, isLoading: statsLoading } = useDashboardStats();
+  const { data: activityData, isLoading: activityLoading } = useDashboardActivity();
+  
+  // We'll use the activityData for the table instead of useCandidates directly, 
+  // or we can fallback to candidates if activity isn't fully ready
+  const recentCandidates = activityData?.data?.recentCandidates || [];
+  const stats = statsData?.data || { totalJobs: 0, resumesParsed: 0, highMatchCandidates: 0 };
 
   return (
     <DashboardLayout>
@@ -90,19 +94,19 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard 
             title="Active Jobs" 
-            value={jobsData?.data?.length || 0} 
+            value={statsLoading ? "..." : stats.activeJobs} 
             trend="+2% this week" 
             sparkline={{ values: [30, 50, 70, 50, 80, 100], bgColor: 'bg-emerald-100/50', barColor: 'bg-emerald-400' }} 
           />
           <StatCard 
-            title="Resumes Parsed Today" 
-            value="1,402" 
+            title="Resumes Parsed" 
+            value={statsLoading ? "..." : stats.resumesParsed} 
             trend="+15% vs yesterday" 
             sparkline={{ values: [20, 40, 30, 70, 50, 100], bgColor: 'bg-blue-100/50', barColor: 'bg-blue-400' }} 
           />
           <StatCard 
             title="High-Match Candidates" 
-            value="28" 
+            value={statsLoading ? "..." : stats.highMatchCandidates} 
             trend="+5% new matches" 
             sparkline={{ values: [60, 30, 50, 70, 100, 80], bgColor: 'bg-ai-accent/10', barColor: 'bg-ai-accent' }} 
           />
@@ -148,10 +152,12 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-primary/10">
-                {candidatesLoading ? (
+                {activityLoading ? (
                   <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-bold italic">Scaling intelligence...</td></tr>
+                ) : recentCandidates.length === 0 ? (
+                  <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-bold italic">No recent activity found.</td></tr>
                 ) : (
-                  candidates.map((candidate: any) => (
+                  recentCandidates.map((candidate: any) => (
                     <tr key={candidate._id} className="hover:bg-slate-50 dark:hover:bg-primary/5 transition-all group cursor-pointer">
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-4">
@@ -165,14 +171,16 @@ export default function DashboardPage() {
                         </div>
                       </td>
                       <td className="px-6 py-5">
-                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Senior Engineering Lead</p>
+                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Software Engineer</p>
                       </td>
-                      <td className="px-6 py-5 text-[10px] font-bold text-slate-400 uppercase">2 mins ago</td>
+                      <td className="px-6 py-5 text-[10px] font-bold text-slate-400 uppercase">
+                        {new Date(candidate.createdAt).toLocaleDateString()}
+                      </td>
                       <td className="px-6 py-5">
                         <MatchScoreRing score={candidate.parsedResume?.score || 95} />
                       </td>
                       <td className="px-6 py-5">
-                        <Badge variant="success" className="px-2 py-0.5 h-auto text-[9px] font-black uppercase tracking-tighter">Parsing Success</Badge>
+                        <Badge variant="success" className="px-2 py-0.5 h-auto text-[9px] font-black uppercase tracking-tighter">Parsed</Badge>
                       </td>
                       <td className="px-6 py-5 text-right px-8">
                         <button className="text-slate-400 hover:text-primary transition-all active:scale-90">

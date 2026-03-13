@@ -15,6 +15,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
 const jobRoutes = require('./routes/jobRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
@@ -35,8 +37,11 @@ app.use('/uploads', express.static('uploads'));
 
 // Mount routes
 app.use('/api/auth', authRoutes);
-app.use('/api', candidateRoutes);
+app.use('/api', candidateRoutes); // NOTE: This handles candidates and potentially uploads
 app.use('/api/jobs', jobRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/dashboard', require('./routes/dashboardRoutes')); // Dynamic Dashboard Endpoints
 
 // Health check
 app.get('/health', (req, res) => {
