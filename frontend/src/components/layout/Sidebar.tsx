@@ -9,6 +9,7 @@ const navItems = [
   { label: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
   { label: 'Resumes', icon: 'description', href: '/resumes/upload' },
   { label: 'Jobs', icon: 'work', href: '/jobs' },
+  { label: 'Interviews', icon: 'event', href: '/interviews' },
   { label: 'Candidates', icon: 'group', href: '/candidates' },
   { label: 'Talent Pool', icon: 'person_add', href: '/talent-pool' },
   { label: 'Analytics', icon: 'analytics', href: '/analytics' },

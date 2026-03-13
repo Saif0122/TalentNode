@@ -2,162 +2,291 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Button, Badge } from '@/components/ui';
-import { ParsingStatusList } from '@/components/upload/ParsingStatusList';
-import { candidateApi } from '@/lib/api';
-import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui';
+import api from '@/lib/api';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ResumeUploadPage() {
-  const [activeUploads, setActiveUploads] = useState<any[]>([]);
-  const [completedUploads, setCompletedUploads] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [rawText, setRawText] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'file' | 'text'>('file');
+
+  const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
+  const router = useRouter();
 
-  const processFiles = (files: File[]) => {
-    files.forEach(file => {
-      const id = Math.random().toString(36).substring(7);
-      
-      setActiveUploads(prev => [{ id, file, progress: 0, status: 'Initializing upload...' }, ...prev]);
+  const handleUploadSubmit = async () => {
+    if (!file && !rawText.trim()) {
+      setError('Please select a file or paste resume text to continue.');
+      return;
+    }
 
-      const formData = new FormData();
+    setIsUploading(true);
+    setError(null);
+    setLogs(['[INFO] Initializing upload...']);
+
+    const formData = new FormData();
+    if (activeTab === 'file' && file) {
       formData.append('resume', file);
-      
-      candidateApi.upload(formData, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-        setActiveUploads(prev => prev.map(u => 
-          u.id === id ? { ...u, progress: percentCompleted, status: percentCompleted < 100 ? 'Uploading...' : 'AI Extraction in progress...' } : u
-        ));
-      })
-      .then((res) => {
-        const candidate = res.data.candidate;
-        const skillsCount = candidate?.skills?.length || 0;
-        
-        setActiveUploads(prev => prev.filter(u => u.id !== id));
-        setCompletedUploads(prev => [{
-          id,
-          filename: file.name,
-          details: `SUCCESS: ${skillsCount} skills detected`,
-          candidateId: candidate?._id
-        }, ...prev]);
-        
-        queryClient.invalidateQueries({ queryKey: ['candidates'] });
-      })
-      .catch((err) => {
-        console.error(err);
-        setActiveUploads(prev => prev.map(u => 
-          u.id === id ? { ...u, status: 'FAILED: ' + (err?.error || err.message), progress: 100 } : u
-        ));
+    } else if (activeTab === 'text' && rawText.trim()) {
+      formData.append('rawText', rawText.trim());
+    }
+
+    try {
+      const response = await api.post('/upload-resume', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-    });
+
+      const { candidateId, logs: backendLogs } = response.data;
+      
+      setLogs(prev => [...prev, ...(backendLogs || []), '[SUCCESS] Redirecting to report...']);
+      
+      setTimeout(() => {
+        router.push(`/report/${candidateId}`);
+      }, 1500);
+
+    } catch (err: any) {
+      console.error('Upload Error:', err);
+      // Ensure we extract error message from the response if available
+      const errorMessage = err.response?.data?.error || err.error || err.message || 'Failed to process resume';
+      setError(errorMessage);
+      
+      if (err.response?.data?.logs) {
+        setLogs(prev => [...prev, ...err.response.data.logs]);
+      } else if (err.logs) {
+        setLogs(prev => [...prev, ...err.logs]);
+      }
+      setIsUploading(false);
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      processFiles(Array.from(e.dataTransfer.files));
+      setFile(e.dataTransfer.files[0]);
+      setActiveTab('file');
+      setError(null);
     }
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
-  }, []);
+  };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragLeave = () => {
     setIsDragging(false);
-  }, []);
+  };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      processFiles(Array.from(e.target.files));
-      e.target.value = ''; // Reset input
+      setFile(e.target.files[0]);
+      setActiveTab('file');
+      setError(null);
     }
+  };
+
+  const getFileIcon = (filename: string) => {
+    if (filename.endsWith('.pdf')) return 'picture_as_pdf';
+    if (filename.endsWith('.docx') || filename.endsWith('.doc')) return 'description';
+    if (filename.endsWith('.txt')) return 'subject';
+    return 'insert_drive_file';
   };
 
   return (
     <DashboardLayout>
-      <main className="max-w-5xl mx-auto w-full space-y-10 p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Upload Resumes</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">Add candidates to your pipeline with AI-powered parsing.</p>
+      <main className="max-w-4xl mx-auto w-full py-12 px-6">
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-4">
+            Import Candidate
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">
+            Upload a resume or paste plain text to generate an AI-parsed report instantly.
+          </p>
         </div>
 
-        {/* Large Drag & Drop Zone */}
-        <div 
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-16 text-center transition-all cursor-pointer shadow-sm",
-            isDragging ? "border-primary bg-primary/[0.08] scale-[1.02]" : "border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/[0.08]"
-          )}
-        >
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileInput} 
-            className="hidden" 
-            multiple 
-            accept=".pdf,.doc,.docx,.txt" 
-          />
-          
-          <div className="relative mb-10 w-72 h-56 flex items-center justify-center pointer-events-none">
-            {/* Abstract Illustration */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-36 h-48 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-primary/20 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                <div className="p-5 space-y-4">
-                  <div className="h-2 w-3/4 bg-primary/10 rounded"></div>
-                  <div className="h-2 w-1/2 bg-primary/10 rounded"></div>
-                  <div className="h-2 w-5/6 bg-primary/10 rounded"></div>
-                  <div className="h-2 w-2/3 bg-primary/10 rounded"></div>
-                  <div className="h-2 w-3/4 bg-primary/10 rounded"></div>
-                  <div className="h-2 w-1/2 bg-primary/10 rounded"></div>
+        <div className="grid grid-cols-1 gap-8">
+          <AnimatePresence mode="wait">
+            {!isUploading ? (
+              <motion.div
+                key="input-form"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden"
+              >
+                <div className="flex border-b border-slate-200 dark:border-slate-800">
+                  <button 
+                    onClick={() => setActiveTab('file')}
+                    className={cn(
+                      "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors",
+                      activeTab === 'file' ? "bg-primary/5 text-primary border-b-2 border-primary" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                    Upload Document
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('text')}
+                    className={cn(
+                      "flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors",
+                      activeTab === 'text' ? "bg-primary/5 text-primary border-b-2 border-primary" : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">content_paste</span>
+                    Paste Raw Text
+                  </button>
                 </div>
-                <div className="absolute left-0 w-full h-1.5 bg-primary/60 shadow-[0_0_20px_rgba(59,30,138,0.9)] z-10 animate-scan"></div>
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-primary/10 to-transparent"></div>
-              </div>
-            </div>
-            {/* Decorative floating elements */}
-            <div className="absolute -top-6 -right-6 size-14 bg-primary/20 rounded-full flex items-center justify-center text-primary shadow-lg animate-bounce duration-3000">
-              <span className="material-symbols-outlined text-2xl">psychology</span>
-            </div>
-            <div className="absolute -bottom-4 -left-8 size-12 bg-primary/10 rounded-full flex items-center justify-center text-primary shadow-lg">
-              <span className="material-symbols-outlined text-xl">data_object</span>
-            </div>
-          </div>
-          
-          <div className="max-w-md pointer-events-none">
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {isDragging ? 'Drop files here!' : 'Drag & drop 100+ resumes here'}
-            </h3>
-            <p className="mt-4 text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-              Our AI will parse contact info, skills, and experience in seconds. Support for PDF, DOCX, and TXT.
-            </p>
-          </div>
-          <div className="mt-10 flex gap-4 pointer-events-none">
-            <Button variant="primary" className="px-10 py-3 text-sm">
-              Browse Files
-            </Button>
-            <Button variant="ghost" className="border border-slate-200 px-10 py-3 text-sm flex items-center gap-2 pointer-events-auto">
-              <span className="material-symbols-outlined text-sm">link</span>
-              Import from LinkedIn
-            </Button>
-          </div>
-        </div>
 
-        {/* Recent Uploads Section */}
-        <div className="mt-16">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 underline decoration-primary/20 underline-offset-8">Recent Uploads</h2>
-            <Badge variant="info" className="px-3 py-1">{activeUploads.length} files processing</Badge>
-          </div>
-          <ParsingStatusList activeUploads={activeUploads} completedUploads={completedUploads} />
+                <div className="p-8">
+                  {activeTab === 'file' ? (
+                    <div>
+                      {!file ? (
+                        <div
+                          onDrop={handleDrop}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={cn(
+                            "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center transition-all cursor-pointer",
+                            isDragging 
+                              ? "border-primary bg-primary/5 scale-[1.01]" 
+                              : "border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:border-primary/50"
+                          )}
+                        >
+                          <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileInput} 
+                            className="hidden" 
+                            accept=".pdf,.doc,.docx,.txt,.rtf" 
+                          />
+                          <div className="size-20 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
+                            <span className="material-symbols-outlined text-4xl">cloud_upload</span>
+                          </div>
+                          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Click or drag resume here</h3>
+                          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Supports PDF, DOCX, DOC, TXT, and RTF (Max 10MB)</p>
+                        </div>
+                      ) : (
+                        <div className="p-6 rounded-2xl border border-primary/20 bg-primary/5 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="size-14 bg-white dark:bg-slate-800 rounded-xl shadow-sm flex items-center justify-center text-primary">
+                              <span className="material-symbols-outlined text-3xl">{getFileIcon(file.name)}</span>
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">{file.name}</h4>
+                              <p className="text-xs text-slate-500 font-medium">
+                                {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type || 'Unknown Type'}
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 px-3" onClick={() => setFile(null)}>
+                            <span className="material-symbols-outlined text-xl">delete</span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Resume Text</label>
+                      <textarea
+                        value={rawText}
+                        onChange={(e) => { setRawText(e.target.value); setError(null); }}
+                        placeholder="Paste the candidate's full resume text here..."
+                        className="w-full h-64 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 focus:ring-2 focus:ring-primary/20 text-sm font-mono transition-shadow resize-none"
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-8 flex justify-end">
+                    <Button 
+                      variant="primary" 
+                      onClick={handleUploadSubmit} 
+                      disabled={(!file && !rawText.trim()) || isUploading}
+                      className="w-full md:w-auto px-8 py-3 text-base shadow-lg shadow-primary/20 flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-xl">auto_awesome</span>
+                      Extract & Parse
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="processing"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-xl overflow-hidden"
+              >
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="relative size-32 mb-8">
+                    <div className="absolute inset-0 border-4 border-primary/10 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined text-4xl">psychology</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                    Parsing Intelligence...
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">
+                    Our AI is extracting candidate profile data
+                  </p>
+                </div>
+
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Processing Logs</h4>
+                    <span className="size-2 bg-emerald-500 rounded-full animate-ping"></span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 font-mono text-xs space-y-2 h-48 overflow-y-auto border border-slate-100 dark:border-slate-800 shadow-inner">
+                    {logs.map((log, i) => (
+                      <div key={i} className={cn(
+                        "flex gap-3",
+                        log.includes('[ERROR]') ? "text-rose-500" : 
+                        log.includes('[SUCCESS]') ? "text-emerald-500" : "text-slate-500"
+                      )}>
+                        <span className="opacity-30">{i + 1}</span>
+                        <span className="font-bold">{log}</span>
+                      </div>
+                    ))}
+                    <div className="h-1" ref={(el) => el?.scrollIntoView({ behavior: 'smooth' })}></div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-6 flex items-start gap-4"
+            >
+              <span className="material-symbols-outlined text-rose-500 mt-0.5">error</span>
+              <div className="flex-1">
+                <h4 className="text-rose-900 dark:text-rose-100 font-bold mb-1">Extraction Failed</h4>
+                <p className="text-rose-700 dark:text-rose-300 text-sm bg-white/50 p-3 rounded-lg border border-rose-100 mt-2 font-mono whitespace-pre-wrap">{error}</p>
+                <div className="mt-4 flex gap-3">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { setError(null); setIsUploading(false); }}
+                    className="text-rose-700 bg-rose-100 hover:bg-rose-200 uppercase text-xs tracking-widest font-bold"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </main>
     </DashboardLayout>

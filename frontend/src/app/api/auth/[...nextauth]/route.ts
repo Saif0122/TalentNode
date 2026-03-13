@@ -10,6 +10,13 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -106,16 +113,16 @@ export const authOptions: NextAuthOptions = {
       return true; // return true for credentials flow
     },
     async jwt({ token, user, trigger, session }) {
-      // User is defined on initial sign-in
       if (user) {
-        token.role = (user as any).role || "candidate";
+        token.role = (user as any).role;
         token.id = user.id;
         token.accessToken = (user as any).accessToken;
+        console.log('[NextAuth] JWT Callback - User Sign-in:', { id: token.id, role: token.role });
       }
       
-      // Allow session updates
       if (trigger === "update" && session) {
         token.role = session.role ?? token.role;
+        token.accessToken = session.accessToken ?? token.accessToken;
       }
 
       return token;
@@ -125,6 +132,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
         (session.user as any).accessToken = token.accessToken;
+        console.log('[NextAuth] Session Callback:', { id: (session.user as any).id, role: (session.user as any).role });
       }
       return session;
     },

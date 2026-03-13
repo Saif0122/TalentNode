@@ -1,4 +1,4 @@
-const pdf = require('pdf-parse');
+const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
 /**
@@ -71,17 +71,58 @@ const extractEducation = (text) => {
  * @param {string} mimetype - File mimetype.
  * @returns {Promise<Object>} The parsed result { rawText, summary, skills, yearsExperience, education }.
  */
-const ingestResume = async (buffer, mimetype) => {
+const ingestResume = async (buffer, mimetype, rawTextOverride = null) => {
   let rawText = '';
 
-  if (mimetype === 'application/pdf') {
-    const data = await pdf(buffer);
-    rawText = data.text;
-  } else if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    const data = await mammoth.extractRawText({ buffer });
-    rawText = data.value;
+  if (rawTextOverride) {
+    // If text was pasted directly from the frontend, bypass buffers
+    rawText = rawTextOverride;
+  } else if (!buffer) {
+    throw new Error('No file buffer or raw text provided');
+  } else if (mimetype === 'application/pdf') {
+    try {
+      // Handle cases where pdf-parse might be an object instead of a function
+      const parser = typeof pdfParse === 'function' ? pdfParse : (pdfParse.PDFParse || pdfParse.default || pdfParse);
+      
+      if (typeof parser !== 'function') {
+        throw new Error('PDF parser is not a function. Check pdf-parse installation.');
+      }
+
+      const data = await parser(buffer);
+      rawText = data.text;
+    } catch (pdfErr) {
+      console.error('PDF Parsing failed:', pdfErr.message);
+      // Fallback to ASCII scraping if the library fails
+      rawText = buffer.toString('ascii').replace(/[^\x20-\x7E\n]/g, ' ');
+    }
+  } else if (
+    mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+    mimetype === 'application/msword'
+  ) {
+    // mammoth handles docx very well. For older .doc it might struggle but we attempt it anyway
+    try {
+      const data = await mammoth.extractRawText({ buffer });
+      rawText = data.value;
+    } catch (e) {
+      // Fallback for older .doc binary formats if mammoth fails
+      console.warn('Mammoth extraction failed, falling back to ASCII scraping:', e.message);
+      rawText = buffer.toString('ascii').replace(/[^\x20-\x7E\n]/g, ' ');
+    }
+  } else if (mimetype === 'text/plain' || mimetype === 'text/rtf') {
+    // direct string decoding
+    rawText = buffer.toString('utf8');
+    // Strip RTF markup headers if it's explicitly RTF
+    if (mimetype === 'text/rtf' || rawText.startsWith('{\\rtf')) {
+      // Basic heuristic to strip structural RTF brackets
+      rawText = rawText.replace(/\\([a-z]+)[0-9]* ?/gi, ' ').replace(/[{}]/g, '');
+    }
   } else {
-    throw new Error('Unsupported file type. Only PDF and DOCX are supported.');
+    // Brute force fallback scraper for unrecognized formats
+    console.warn(`Unsupported exact mimetype: ${mimetype}. Attempting brute force ASCII extraction.`);
+    rawText = buffer.toString('ascii').replace(/[^\x20-\x7E\n]/g, ' ');
+    if (rawText.trim().length < 50) {
+      throw new Error(`Unsupported file type (${mimetype}). Please upload PDF, DOCX, or paste the text directly.`);
+    }
   }
 
   const cleanedText = preprocessText(rawText);

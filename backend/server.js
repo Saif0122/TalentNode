@@ -17,6 +17,7 @@ const candidateRoutes = require('./routes/candidateRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const userRoutes = require('./routes/userRoutes');
+const schedulingRoutes = require('./routes/schedulingRoutes');
 
 const app = express();
 
@@ -24,8 +25,10 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
@@ -41,6 +44,7 @@ app.use('/api', candidateRoutes); // NOTE: This handles candidates and potential
 app.use('/api/jobs', jobRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/dashboard', require('./routes/dashboardRoutes')); // Dynamic Dashboard Endpoints
 
 // Health check
@@ -69,14 +73,17 @@ const startServer = async () => {
     });
 
     // Handle Graceful Shutdown
-    const shutdown = (signal) => {
+    const shutdown = async (signal) => {
       console.log(`\n${signal} received. Shutting down gracefully...`);
-      server.close(() => {
-        const mongoose = require('mongoose');
-        mongoose.connection.close(false, () => {
+      server.close(async () => {
+        try {
+          await mongoose.connection.close();
           console.log('MongoDB connection closed.');
           process.exit(0);
-        });
+        } catch (err) {
+          console.error('Error during shutdown:', err);
+          process.exit(1);
+        }
       });
     };
 

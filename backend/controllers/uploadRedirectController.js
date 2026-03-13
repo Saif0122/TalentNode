@@ -10,27 +10,44 @@ const uploadResume = async (req, res) => {
   const logs = [];
   try {
     const file = req.file;
+    const rawText = req.body.rawText;
 
-    if (!file) {
+    if (!file && !rawText) {
       return res.status(400).json({ 
         status: 'fail', 
-        error: 'Resume file is required',
-        logs: ['[ERROR] No file received']
+        error: 'Resume file or raw pasted text is required',
+        logs: ['[ERROR] No data received']
       });
     }
 
-    logs.push(`[INFO] Received file: ${file.originalname} (${file.mimetype})`);
+    if (file) {
+      logs.push(`[INFO] Received file: ${file.originalname} (${file.mimetype})`);
+    } else {
+      logs.push(`[INFO] Received raw text paste (${rawText.length} characters)`);
+    }
+    
     logs.push('[INFO] Starting ingestion service...');
 
-    const buffer = fs.readFileSync(file.path);
-    const ingestedData = await ingestionService.ingestResume(buffer, file.mimetype);
+    let buffer = null;
+    let mimetype = null;
+    let fallbackName = 'Unknown';
+
+    if (file) {
+      buffer = fs.readFileSync(file.path);
+      mimetype = file.mimetype;
+      fallbackName = file.originalname.split('.')[0] || 'Unknown';
+    } else {
+      fallbackName = 'Pasted Resume';
+    }
+
+    const ingestedData = await ingestionService.ingestResume(buffer, mimetype, rawText);
 
     logs.push('[SUCCESS] AI extraction complete');
-    logs.push(`[INFO] Detected name: ${ingestedData.name || 'Unknown'}`);
+    logs.push(`[INFO] Detected name: ${ingestedData.name || fallbackName}`);
     logs.push(`[INFO] Detected skills: ${ingestedData.skills?.length || 0}`);
 
     const candidateData = {
-      name: ingestedData.name || file.originalname.split('.')[0] || 'Unknown',
+      name: ingestedData.name || fallbackName,
       email: ingestedData.email || '',
       phone: ingestedData.phone || '',
       summary: ingestedData.summary || '',
@@ -38,8 +55,8 @@ const uploadResume = async (req, res) => {
       skills: ingestedData.skills || [],
       experienceTimeline: ingestedData.experienceTimeline || [],
       parsedResume: ingestedData,
-      resumeUrl: file.path,
-      uploadHistory: [{ fileName: file.originalname, parsedData: ingestedData }]
+      resumeUrl: file ? file.path : 'text-paste',
+      uploadHistory: [{ fileName: file ? file.originalname : 'text-paste', parsedData: ingestedData }]
     };
 
     logs.push('[INFO] Saving candidate to database...');
