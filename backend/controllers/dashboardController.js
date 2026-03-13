@@ -9,7 +9,7 @@ exports.getStats = async (req, res, next) => {
   try {
     const totalCandidates = await Candidate.countDocuments();
     const totalJobs = await Job.countDocuments();
-    const activeJobs = await Job.countDocuments(); // Simplification: all jobs are 'active' for now
+    const activeJobs = await Job.countDocuments({ status: 'published' }); // Count published jobs only
     
     // Total applications - dummy stat to show scale (computed from candidates with specific status if existed)
     // For now we compute a multiple, or keep a count of upload histories
