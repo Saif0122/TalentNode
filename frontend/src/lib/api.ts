@@ -19,6 +19,10 @@ export const candidateApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress,
     }).then(res => res.data),
+  getVersions: (id: string) => api.get(`/candidates/${id}/versions`).then(res => res.data),
+  getVersionById: (id: string, versionId: string) => api.get(`/candidates/${id}/versions/${versionId}`).then(res => res.data),
+  compare: (id: string, versionA: string, versionB: string) => 
+    api.post(`/candidates/${id}/compare`, { versionA, versionB }).then(res => res.data),
 };
 
 export const jobApi = {

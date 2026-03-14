@@ -2,6 +2,7 @@ const candidateService = require('../services/candidateService');
 const ingestionService = require('../services/ingest.js');
 const matcherService = require('../services/matcher.js');
 const { createNotification } = require('./notificationController');
+const { diffWords, compareSkills, compareExperience } = require('../utils/diffViewer');
 const Candidate = require('../models/Candidate');
 const Job = require('../models/Job');
 const fs = require('fs');
@@ -30,42 +31,82 @@ const uploadResume = async (req, res) => {
       ingestedData = await ingestionService.ingestResume(buffer, file.mimetype);
     }
 
-    const candidateData = {
-      name: name || ingestedData.name || (file ? file.originalname.split('.')[0] : 'Unknown'),
-      email: ingestedData.email || '',
-      phone: ingestedData.phone || '',
-      summary: ingestedData.summary || '',
-      location: location || ingestedData.location || '',
-      skills: skills 
-        ? (Array.isArray(skills) ? skills : skills.split(',').map(s => s.trim())) 
-        : (ingestedData.skills || []),
-      experienceTimeline: ingestedData.experienceTimeline || [],
-      parsedResume: {
-        ...(ingestedData || {}),
-        ...(typeof parsedResume === 'string' ? JSON.parse(parsedResume) : (parsedResume || {}))
-      },
-      resumeUrl: file ? file.path : null,
-      uploadHistory: file ? [{ fileName: file.originalname, parsedData: ingestedData }] : []
+    const candidateName = name || ingestedData.name || (file ? file.originalname.split('.')[0] : 'Unknown');
+    const candidateEmail = ingestedData.email || '';
+
+    // Check if candidate already exists
+    let candidate = await Candidate.findOne({ 
+      $or: [
+        { email: candidateEmail && candidateEmail !== '' ? candidateEmail : undefined },
+        { name: candidateName }
+      ].filter(q => Object.values(q)[0] !== undefined)
+    });
+
+    const parsedData = {
+      ...(ingestedData || {}),
+      ...(typeof parsedResume === 'string' ? JSON.parse(parsedResume) : (parsedResume || {}))
     };
 
-    const savedCandidate = await candidateService.saveCandidate(candidateData);
+    if (candidate) {
+      // Add as a new version
+      candidate.uploadHistory.push({
+        fileName: file ? file.originalname : 'Manual Upload',
+        parsedData: parsedData,
+        resumeUrl: file ? file.path : candidate.resumeUrl
+      });
+      
+      // Update top-level fields with latest data
+      candidate.name = candidateName;
+      if (candidateEmail) candidate.email = candidateEmail;
+      candidate.summary = ingestedData.summary || candidate.summary;
+      candidate.location = location || ingestedData.location || candidate.location;
+      candidate.skills = skills 
+        ? (Array.isArray(skills) ? skills : skills.split(',').map(s => s.trim())) 
+        : (ingestedData.skills || candidate.skills);
+      candidate.experienceTimeline = ingestedData.experienceTimeline || candidate.experienceTimeline;
+      candidate.parsedResume = parsedData;
+      if (file) candidate.resumeUrl = file.path;
 
-    // Broadcast a notification that a new candidate profile was imported
+      await candidate.save();
+    } else {
+      // Create new candidate
+      const candidateData = {
+        name: candidateName,
+        email: candidateEmail,
+        phone: ingestedData.phone || '',
+        summary: ingestedData.summary || '',
+        location: location || ingestedData.location || '',
+        skills: skills 
+          ? (Array.isArray(skills) ? skills : skills.split(',').map(s => s.trim())) 
+          : (ingestedData.skills || []),
+        experienceTimeline: ingestedData.experienceTimeline || [],
+        parsedResume: parsedData,
+        resumeUrl: file ? file.path : null,
+        uploadHistory: [{ 
+          fileName: file ? file.originalname : 'Initial Upload', 
+          parsedData: parsedData,
+          resumeUrl: file ? file.path : null
+        }]
+      };
+      candidate = await candidateService.saveCandidate(candidateData);
+    }
+
+    // Broadcast a notification
     if (file) {
       await createNotification({
-        title: 'Resume Parsed',
-        message: `Successfully extracted profile for ${savedCandidate.name}.`,
+        title: candidate.uploadHistory.length > 1 ? 'Resume Version Added' : 'Resume Parsed',
+        message: `Successfully extracted profile for ${candidate.name}.`,
         type: 'success',
-        link: `/candidates/${savedCandidate._id}`
+        link: `/report/${candidate._id}`
       });
     }
 
     res.status(201).json({
       status: 'success',
       data: {
-        id: savedCandidate._id,
-        parsedResume: savedCandidate.parsedResume,
-        score: 0 // Mock score for initial upload
+        id: candidate._id,
+        parsedResume: candidate.parsedResume,
+        versionCount: candidate.uploadHistory.length
       }
     });
   } catch (error) {
@@ -167,9 +208,76 @@ const verifyScoring = async (req, res) => {
   }
 };
 
+const getVersions = async (req, res) => {
+  try {
+    const candidate = await Candidate.findById(req.params.id);
+    if (!candidate) return res.status(404).json({ status: 'fail', error: 'Candidate not found' });
+
+    res.status(200).json({
+      status: 'success',
+      data: candidate.uploadHistory.map((h, idx) => ({
+        versionId: h._id,
+        versionNumber: idx + 1,
+        fileName: h.fileName,
+        timestamp: h.timestamp
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
+const getVersionById = async (req, res) => {
+  try {
+    const candidate = await Candidate.findById(req.params.id);
+    if (!candidate) return res.status(404).json({ status: 'fail', error: 'Candidate not found' });
+
+    const version = candidate.uploadHistory.id(req.params.versionId);
+    if (!version) return res.status(404).json({ status: 'fail', error: 'Version not found' });
+
+    res.status(200).json({
+      status: 'success',
+      data: version
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
+const compareVersions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { versionA, versionB } = req.body;
+
+    const candidate = await Candidate.findById(id);
+    if (!candidate) return res.status(404).json({ status: 'fail', error: 'Candidate not found' });
+
+    const vA = candidate.uploadHistory.id(versionA);
+    const vB = candidate.uploadHistory.id(versionB);
+
+    if (!vA || !vB) return res.status(404).json({ status: 'fail', error: 'One or both versions not found' });
+
+    const result = {
+      summary: diffWords(vA.parsedData.summary, vB.parsedData.summary),
+      skills: compareSkills(vA.parsedData.skills, vB.parsedData.skills),
+      experience: compareExperience(vA.parsedData.experienceTimeline, vB.parsedData.experienceTimeline)
+    };
+
+    res.status(200).json({
+      status: 'success',
+      data: result
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
 module.exports = {
   uploadResume,
   getCandidates,
   getCandidateById,
+  getVersions,
+  getVersionById,
+  compareVersions,
   verifyScoring
 };

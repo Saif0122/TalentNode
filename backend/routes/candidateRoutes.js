@@ -29,6 +29,9 @@ router.post('/upload-resume', upload.single('resume'), uploadRedirectController.
 // New Routes
 router.get('/candidates', candidateController.getCandidates);
 router.get('/candidates/:id', candidateController.getCandidateById);
+router.get('/candidates/:id/versions', candidateController.getVersions);
+router.get('/candidates/:id/versions/:versionId', candidateController.getVersionById);
+router.post('/candidates/:id/compare', candidateController.compareVersions);
 router.post('/verify-scoring/:candidateId', candidateController.verifyScoring);
 
 module.exports = router;

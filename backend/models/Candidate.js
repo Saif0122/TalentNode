@@ -45,7 +45,8 @@ const candidateSchema = new mongoose.Schema({
     {
       fileName: String,
       timestamp: { type: Date, default: Date.now },
-      parsedData: mongoose.Schema.Types.Mixed
+      parsedData: mongoose.Schema.Types.Mixed,
+      resumeUrl: String
     }
   ],
   createdAt: {

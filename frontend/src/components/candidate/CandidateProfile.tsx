@@ -3,6 +3,7 @@
 import React from 'react';
 import { Card, Badge, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
 
 interface CandidateProfileProps {
   candidate: any;
@@ -246,6 +247,9 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
               </div>
             </div>
           </Card>
+
+          {/* Version History */}
+          <VersionHistoryPanel candidateId={candidate._id} />
         </div>
       </div>
     </div>
