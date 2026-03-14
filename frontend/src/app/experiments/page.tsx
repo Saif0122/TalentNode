@@ -10,12 +10,31 @@ import { cn } from '@/lib/utils';
 
 export default function ExperimentsPage() {
   const [selectedExperiment, setSelectedExperiment] = useState<string | null>(null);
-  const { getExperiments, runExperiment, getComparison } = useExperiments();
-  const { data: jobs } = useJobs();
-  const { data: candidates } = useCandidates();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newExp, setNewExp] = useState({ name: '', jobId: '', candidateIds: [] as string[] });
+  
+  const { getExperiments, runExperiment, getComparison, createExperiment } = useExperiments();
+  const { data: jobsData } = useJobs();
+  const { data: candidatesData } = useCandidates();
 
   const experiments = getExperiments.data?.data || [];
   const activeExp = getComparison(selectedExperiment || '').data?.data;
+  const jobs = jobsData?.data || [];
+  const candidates = candidatesData?.data?.candidates || [];
+
+  const handleCreateExperiment = async () => {
+    if (!newExp.name || !newExp.jobId || newExp.candidateIds.length === 0) {
+      alert('Please fill in all fields and select at least one candidate.');
+      return;
+    }
+    try {
+      await createExperiment.mutateAsync(newExp);
+      setIsModalOpen(false);
+      setNewExp({ name: '', jobId: '', candidateIds: [] });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleRunExperiment = async (id: string) => {
     try {
@@ -25,15 +44,90 @@ export default function ExperimentsPage() {
     }
   };
 
+  const toggleCandidate = (id: string) => {
+    setNewExp(prev => ({
+      ...prev,
+      candidateIds: prev.candidateIds.includes(id)
+        ? prev.candidateIds.filter(c => c !== id)
+        : [...prev.candidateIds, id]
+    }));
+  };
+
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto w-full space-y-8">
+      <div className="max-w-7xl mx-auto w-full space-y-8 relative">
+        {/* Modal Overlay */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <Card className="w-full max-w-lg p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">New Scenario Experiment</h2>
+                <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="p-2 h-auto"><span className="material-symbols-outlined">close</span></Button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Experiment Name</label>
+                  <input 
+                    type="text" 
+                    value={newExp.name}
+                    onChange={(e) => setNewExp({...newExp, name: e.target.value})}
+                    placeholder="e.g. Senior Frontend Scorer Bench" 
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 dark:text-white" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Target Job</label>
+                  <select 
+                    value={newExp.jobId}
+                    onChange={(e) => setNewExp({...newExp, jobId: e.target.value})}
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 dark:text-white"
+                  >
+                    <option value="">Select a job profile...</option>
+                    {jobs.map((job: any) => <option key={job._id} value={job._id}>{job.title}</option>)}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Test Subjects ({newExp.candidateIds.length} selected)</label>
+                  <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl p-2 space-y-1">
+                    {candidates.map((c: any) => (
+                      <div 
+                        key={c._id} 
+                        onClick={() => toggleCandidate(c._id)}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
+                          newExp.candidateIds.includes(c._id) ? "bg-primary/10 border border-primary/20" : "hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent"
+                        )}
+                      >
+                        <div className="size-6 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold">{c.name[0]}</div>
+                        <span className="text-sm font-medium dark:text-gray-200">{c.name}</span>
+                        {newExp.candidateIds.includes(c._id) && <span className="material-symbols-outlined text-primary text-sm ml-auto">check_circle</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                variant="primary" 
+                onClick={handleCreateExperiment}
+                className="w-full h-14 rounded-xl shadow-xl shadow-primary/20 text-sm font-black uppercase tracking-widest"
+                disabled={createExperiment.isPending}
+              >
+                {createExperiment.isPending ? 'Initiating...' : 'Start A/B Experiment'}
+              </Button>
+            </Card>
+          </div>
+        )}
+
         <header className="flex h-16 w-full items-center justify-between border-b border-primary/10 bg-white/80 dark:bg-slate-900/80 px-4 backdrop-blur-md rounded-xl sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Experimentation Hub</h1>
             <Badge variant="neutral" className="px-3 py-1 bg-primary/10 text-primary">A/B Scoring</Badge>
           </div>
-          <Button variant="primary" className="flex items-center gap-2">
+          <Button variant="primary" className="flex items-center gap-2" onClick={() => setIsModalOpen(true)}>
             <span className="material-symbols-outlined text-sm">add</span>
             New Experiment
           </Button>
@@ -46,6 +140,10 @@ export default function ExperimentsPage() {
             {getExperiments.isLoading ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-100 dark:bg-slate-800 rounded-xl"></div>)}
+              </div>
+            ) : experiments.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 font-bold border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                No experiments found. Start a new analysis to see results here.
               </div>
             ) : experiments.map((exp: any) => (
               <Card 

@@ -3,21 +3,37 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
+interface NavItem {
+  label: string;
+  icon: string;
+  href: string;
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { label: 'Dashboard', icon: 'dashboard', href: '/dashboard' },
   { label: 'Resumes', icon: 'description', href: '/resumes/upload' },
   { label: 'Jobs', icon: 'work', href: '/jobs' },
   { label: 'Interviews', icon: 'event', href: '/interviews' },
   { label: 'Candidates', icon: 'group', href: '/candidates' },
   { label: 'Talent Pool', icon: 'person_add', href: '/talent-pool' },
-  { label: 'Analytics', icon: 'analytics', href: '/analytics' },
-  { label: 'Experiments', icon: 'science', href: '/experiments' },
+  { label: 'Analytics', icon: 'analytics', href: '/analytics', adminOnly: true },
+  { label: 'Experiments', icon: 'science', href: '/experiments', adminOnly: true },
+  { label: 'System Logs', icon: 'database', href: '/admin/logs', adminOnly: true },
 ];
 
 export const Sidebar = () => {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userRole = session?.user?.role || 'candidate';
+
+  const visibleItems = navItems.filter(item => {
+    if (item.adminOnly && userRole !== 'admin') return false;
+    return true;
+  });
 
   return (
     <aside className="w-64 flex-shrink-0 border-r border-primary/10 bg-white dark:bg-background-dark flex flex-col h-screen">
@@ -27,12 +43,12 @@ export const Sidebar = () => {
         </div>
         <div>
           <h1 className="text-lg font-bold tracking-tight text-primary dark:text-slate-100">TalentNode</h1>
-          <p className="text-xs text-slate-500">Recruiter Portal</p>
+          <p className="text-xs text-slate-500">{userRole.charAt(0).toUpperCase() + userRole.slice(1)} Portal</p>
         </div>
       </div>
       
-      <nav className="flex-1 px-4 space-y-1">
-        {navItems.map((item) => {
+      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+        {visibleItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link 

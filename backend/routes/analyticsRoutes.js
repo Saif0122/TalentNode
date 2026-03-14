@@ -13,5 +13,7 @@ router.get('/top-skills', analyticsController.getTopSkills);
 router.get('/sources', analyticsController.getSources);
 router.get('/cohorts', analyticsController.getCohorts);
 router.get('/role-performance', analyticsController.getRolePerformance);
+router.get('/recruiters', analyticsController.getRecruiterStats);
+router.get('/di-metrics', analyticsController.getDIMetrics);
 
 module.exports = router;

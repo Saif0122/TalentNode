@@ -3,6 +3,61 @@ const Candidate = require('../models/Candidate');
 const Job = require('../models/Job');
 const Interview = require('../models/Interview');
 
+// @desc    Get structured JSON report for a candidate
+// @route   GET /api/reports/:candidateId
+exports.getCandidateReport = async (req, res) => {
+  try {
+    const { candidateId } = req.params;
+
+    const candidate = await Candidate.findById(candidateId)
+      .select('name email phone location skills summary experienceTimeline parsedResume analysisHistory status source department applicationDate')
+      .lean();
+
+    if (!candidate) {
+      return res.status(404).json({ success: false, error: 'Candidate not found' });
+    }
+
+    const interviews = await Interview.find({ candidate: candidateId })
+      .select('status startTime endTime description meetingLink')
+      .sort('-startTime')
+      .lean();
+
+    const latestAnalysis = candidate.analysisHistory?.[candidate.analysisHistory.length - 1] || {};
+    const parsedResume = candidate.parsedResume || {};
+
+    res.status(200).json({
+      success: true,
+      data: {
+        candidate: {
+          id: candidate._id,
+          name: candidate.name,
+          email: candidate.email,
+          phone: candidate.phone,
+          location: candidate.location,
+          department: candidate.department,
+          status: candidate.status,
+          source: candidate.source,
+          applicationDate: candidate.applicationDate
+        },
+        resumeAnalysis: {
+          score: parsedResume.score || latestAnalysis.score || 0,
+          summary: candidate.summary || parsedResume.summary || 'No summary available.',
+          reasons: latestAnalysis.reasons || []
+        },
+        skillMatch: {
+          skills: candidate.skills || [],
+          yearsExperience: parsedResume.yearsExperience || 0
+        },
+        experienceSummary: candidate.experienceTimeline || [],
+        interviews,
+        recommendations: latestAnalysis.matchDetails || {}
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 exports.exportCandidatePDF = async (req, res) => {
   try {
     const { candidateId } = req.params;

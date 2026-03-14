@@ -15,4 +15,9 @@ router.route('/:id')
 router.patch('/:id/publish', protect, authorize('admin', 'recruiter'), jobController.publishJob);
 router.patch('/:id/archive', protect, authorize('admin', 'recruiter'), jobController.archiveJob);
 
+// Job Requests
+router.post('/:jobId/request', protect, jobController.submitJobRequest);
+router.get('/:jobId/requests', protect, authorize('admin', 'recruiter'), jobController.getJobRequests);
+router.patch('/request/:requestId/review', protect, authorize('admin', 'recruiter'), jobController.reviewJobRequest);
+
 module.exports = router;

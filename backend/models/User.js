@@ -90,6 +90,13 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  lastLoginAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

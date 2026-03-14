@@ -1,18 +1,9 @@
 const User = require('../models/User');
 const generateTokenAndSetCookie = require('../utils/generateToken');
 
-/**
- * @desc    Register a new user
- * @route   POST /api/auth/register
- * @access  Public
- */
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-    
-    const mongoose = require('mongoose');
-    console.log('[Auth Debug] Registered Mongoose Models:', Object.keys(mongoose.models));
-    console.log('[Auth Debug] User Model keys:', Object.keys(User || {}));
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -21,7 +12,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Normalized email
     const emailLower = email.toLowerCase();
 
     // Check if user exists
@@ -43,7 +33,7 @@ exports.register = async (req, res) => {
     });
 
     if (user) {
-      generateTokenAndSetCookie(res, user._id);
+      generateTokenAndSetCookie(res, user);
       
       return res.status(201).json({
         status: 'success',
@@ -99,13 +89,27 @@ exports.login = async (req, res) => {
     // Match password
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
+      console.warn(`[Auth] Failed login attempt for user: ${emailLower}`);
       return res.status(401).json({
         status: 'fail',
         error: 'Invalid email or password'
       });
     }
 
-    generateTokenAndSetCookie(res, user._id);
+    // Check if user is active
+    if (!user.isActive) {
+      console.warn(`[Auth] Inactive user login attempt: ${emailLower}`);
+      return res.status(403).json({
+        status: 'fail',
+        error: 'Account is deactivated. Please contact support.'
+      });
+    }
+
+    // Update last login
+    user.lastLoginAt = Date.now();
+    await user.save();
+
+    generateTokenAndSetCookie(res, user);
 
     return res.status(200).json({
       status: 'success',
@@ -131,7 +135,7 @@ exports.login = async (req, res) => {
  */
 exports.googleAuth = async (req, res) => {
   try {
-    const { email, name, role } = req.body;
+    const { email, name, googleAccessToken, googleRefreshToken, googleTokenExpiry } = req.body;
 
     if (!email) {
       return res.status(400).json({
@@ -144,19 +148,40 @@ exports.googleAuth = async (req, res) => {
     let user = await User.findOne({ email: emailLower });
 
     if (user) {
+      // Check if user is active
+      if (!user.isActive) {
+        console.warn(`[Auth] Inactive user Google login attempt: ${emailLower}`);
+        return res.status(403).json({
+          status: 'fail',
+          error: 'Account is deactivated. Please contact support.'
+        });
+      }
+
       user.provider = 'google';
       user.name = name || user.name;
+      user.lastLoginAt = Date.now();
+      
+      // Update Google tokens if provided
+      if (googleAccessToken) user.googleAccessToken = googleAccessToken;
+      if (googleRefreshToken) user.googleRefreshToken = googleRefreshToken;
+      if (googleTokenExpiry) user.googleTokenExpiry = googleTokenExpiry;
       await user.save();
     } else {
       user = await User.create({
         name,
         email: emailLower,
-        role: role || 'candidate',
-        provider: 'google'
+        role: 'candidate',
+        provider: 'google',
+        isActive: true,
+        lastLoginAt: Date.now(),
+        googleAccessToken,
+        googleRefreshToken,
+        googleTokenExpiry
       });
+      console.log(`[Auth] New Google user registered: ${user.email}`);
     }
 
-    generateTokenAndSetCookie(res, user._id);
+    generateTokenAndSetCookie(res, user);
 
     return res.status(200).json({
       status: 'success',

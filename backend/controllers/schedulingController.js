@@ -5,6 +5,8 @@ const User = require('../models/User');
 const calendarService = require('../services/calendarService');
 const { createNotification } = require('./notificationController');
 
+const Connection = require('../models/Connection');
+
 /**
  * @desc    Create a new interview and schedule on Google Calendar
  * @route   POST /api/scheduling/create
@@ -12,13 +14,38 @@ const { createNotification } = require('./notificationController');
  */
 exports.createInterview = async (req, res) => {
   try {
-    const { candidateId, jobId, startTime, endTime, duration, description } = req.body;
+    const { candidateId, jobId, startTime, endTime, duration, description, meetingLink } = req.body;
 
     const candidate = await Candidate.findById(candidateId);
     const job = await Job.findById(jobId);
 
     if (!candidate || !job) {
       return res.status(404).json({ status: 'fail', error: 'Candidate or Job not found' });
+    }
+
+    // STRICT CONNECTION VALIDATION
+    // Find a user account associated with the candidate email
+    const candidateUser = await User.findOne({ email: candidate.email });
+    if (!candidateUser) {
+      return res.status(403).json({ 
+        status: 'fail', 
+        error: 'Active connection required. Candidate must have a platform account and an approved connection with you.' 
+      });
+    }
+
+    const connection = await Connection.findOne({
+      $or: [
+        { requester: req.user._id, recipient: candidateUser._id },
+        { requester: candidateUser._id, recipient: req.user._id }
+      ],
+      status: 'Accepted'
+    });
+
+    if (!connection && req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        status: 'fail', 
+        error: 'You must have an approved connection with this candidate to schedule an interview.' 
+      });
     }
 
     // Initialize interview record
@@ -30,6 +57,7 @@ exports.createInterview = async (req, res) => {
       endTime,
       duration,
       description,
+      meetingLink,
       status: 'scheduled'
     });
 

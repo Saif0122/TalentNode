@@ -9,16 +9,23 @@ exports.createExperiment = async (req, res) => {
   try {
     const { name, jobId, candidateIds } = req.body;
 
+    if (!name || !jobId || !candidateIds || candidateIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Name, jobId, and at least one candidate are required' });
+    }
+
     const experiment = await Experiment.create({
       name,
       job: jobId,
       candidates: candidateIds,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      status: 'Pending'
     });
+
+    const populatedExperiment = await experiment.populate('job', 'title');
 
     res.status(201).json({
       success: true,
-      data: experiment
+      data: populatedExperiment
     });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

@@ -37,7 +37,14 @@ const FilterGroup: React.FC<FilterGroupProps> = ({ title, icon, children, active
   </div>
 );
 
-export const TalentPoolFilters = () => {
+interface TalentPoolFiltersProps {
+  selectedSkills: string[];
+  onToggleSkill: (skill: string) => void;
+}
+
+export const TalentPoolFilters: React.FC<TalentPoolFiltersProps> = ({ selectedSkills, onToggleSkill }) => {
+  const commonSkills = ['Python', 'JavaScript', 'React', 'Node.js', 'AWS', 'Docker', 'Kubernetes', 'TypeScript'];
+  
   return (
     <aside className="w-full lg:w-72 flex flex-col gap-6 shrink-0">
       <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
@@ -50,14 +57,23 @@ export const TalentPoolFilters = () => {
         </div>
         
         <div className="flex flex-col gap-1">
-          <FilterGroup title="Experience" icon="work" />
           <FilterGroup title="Skills" icon="memory" active>
-            {['Python', 'React', 'AWS'].map(skill => (
-              <span key={skill} className="px-2 py-1 bg-white dark:bg-slate-700 text-[10px] font-bold rounded border border-primary/20">
+            {commonSkills.map(skill => (
+              <button 
+                key={skill} 
+                onClick={() => onToggleSkill(skill)}
+                className={cn(
+                  "px-2 py-1 text-[10px] font-bold rounded border transition-all active:scale-95",
+                  selectedSkills.includes(skill) 
+                    ? "bg-primary text-white border-primary" 
+                    : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-primary/50"
+                )}
+              >
                 {skill}
-              </span>
+              </button>
             ))}
           </FilterGroup>
+          <FilterGroup title="Experience" icon="work" />
           <FilterGroup title="Education" icon="school" />
           <FilterGroup title="Location" icon="location_on" />
           <FilterGroup title="Match Confidence" icon="radar" />

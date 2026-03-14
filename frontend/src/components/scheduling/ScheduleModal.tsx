@@ -27,7 +27,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState(30);
   const [description, setDescription] = useState('');
+  const [meetingLink, setMeetingLink] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const createInterview = useCreateInterview();
 
@@ -45,15 +47,18 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         startTime: start.toISOString(),
         endTime: end.toISOString(),
         duration,
-        description
+        description,
+        meetingLink
       });
       setIsSuccess(true);
+      setErrorMessage('');
       setTimeout(() => {
         setIsSuccess(false);
         onClose();
       }, 2000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to schedule interview:', err);
+      setErrorMessage(err.response?.data?.error || err.error || 'Failed to schedule interview. Ensure you have an approved connection.');
     }
   };
 
@@ -144,14 +149,32 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Meeting Link (Optional)</label>
+                <input 
+                  type="url" 
+                  value={meetingLink}
+                  onChange={(e) => setMeetingLink(e.target.value)}
+                  placeholder="https://meet.google.com/..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Notes (Optional)</label>
                 <textarea 
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Interview agenda, meeting link, etc."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none h-20 resize-none"
+                  placeholder="Interview agenda, etc."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none h-16 resize-none"
                 />
               </div>
+
+              {errorMessage && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 text-xs font-medium flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] mt-0.5">error</span>
+                  {errorMessage}
+                </div>
+              )}
 
               <div className="pt-4 flex gap-3">
                 <Button variant="ghost" className="flex-1" onClick={onClose} type="button">Cancel</Button>

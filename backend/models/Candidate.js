@@ -38,9 +38,42 @@ const candidateSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+  rawResumeText: {
+    type: String
+  },
+  experienceYears: {
+    type: Number,
+    default: 0
+  },
+  education: {
+    type: [String],
+    default: []
+  },
   resumeUrl: {
     type: String
   },
+  uploadedFiles: [
+    {
+      fileName: String,
+      fileUrl: String,
+      uploadedAt: { type: Date, default: Date.now }
+    }
+  ],
+  matchedJobs: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Job'
+    }
+  ],
+  analysisHistory: [
+    {
+      timestamp: { type: Date, default: Date.now },
+      score: Number,
+      summary: String,
+      reasons: [String],
+      matchDetails: mongoose.Schema.Types.Mixed
+    }
+  ],
   uploadHistory: [
     {
       fileName: String,
@@ -59,6 +92,19 @@ const candidateSchema = new mongoose.Schema({
     enum: ['LinkedIn', 'Referral', 'Indeed', 'Career Page', 'Other'],
     default: 'Other'
   },
+  recruitedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  department: {
+    type: String,
+    trim: true
+  },
+  applicationDate: {
+    type: Date,
+    default: Date.now
+  },
   hiredAt: {
     type: Date
   },
@@ -68,8 +114,13 @@ const candidateSchema = new mongoose.Schema({
   }
 });
 
-// Create text index on name, summary and skills for full-text search
+// Full-text search index
 candidateSchema.index({ name: 'text', summary: 'text', skills: 'text' });
+// Performance indexes for common queries
+candidateSchema.index({ status: 1 });
+candidateSchema.index({ createdAt: -1 });
+candidateSchema.index({ skills: 1 });
+candidateSchema.index({ recruitedBy: 1 });
 
 const Candidate = mongoose.model('Candidate', candidateSchema);
 

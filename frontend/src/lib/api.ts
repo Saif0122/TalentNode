@@ -23,11 +23,20 @@ export const candidateApi = {
   getVersionById: (id: string, versionId: string) => api.get(`/candidates/${id}/versions/${versionId}`).then(res => res.data),
   compare: (id: string, versionA: string, versionB: string) => 
     api.post(`/candidates/${id}/compare`, { versionA, versionB }).then(res => res.data),
+  saveSearch: (name: string, criteria: any) => api.post('/candidates/save-search', { name, criteria }).then(res => res.data),
+  getSavedSearches: () => api.get('/candidates/saved-searches').then(res => res.data),
+  bulkMessage: (candidateIds: string[], message: string) => api.post('/candidates/bulk-message', { candidateIds, message }).then(res => res.data),
+  toggleStatus: (id: string, status: string) => api.patch(`/candidates/${id}/toggle-status`, { status }).then(res => res.data),
 };
 
 export const jobApi = {
   getAll: () => api.get('/jobs').then(res => res.data),
   create: (data: any) => api.post('/jobs', data).then(res => res.data),
+  submitRequest: (jobId: string, candidateId: string, message: string) => 
+    api.post(`/jobs/${jobId}/request`, { candidateId, message }).then(res => res.data),
+  getRequests: (jobId: string) => api.get(`/jobs/${jobId}/requests`).then(res => res.data),
+  reviewRequest: (requestId: string, status: string) => 
+    api.patch(`/jobs/request/${requestId}/review`, { status }).then(res => res.data),
 };
 
 export const dashboardApi = {
@@ -50,6 +59,19 @@ export const userApi = {
   updateNotifications: (data: any) => api.patch('/users/notifications', data).then(res => res.data),
 };
 
+export const experimentApi = {
+  getAll: () => api.get('/experiments').then(res => res.data),
+  getById: (id: string) => api.get(`/experiments/${id}`).then(res => res.data),
+  getComparison: (id: string) => api.get(`/experiments/${id}/compare`).then(res => res.data),
+  create: (data: any) => api.post('/experiments', data).then(res => res.data),
+  run: (id: string) => api.post(`/experiments/${id}/run`).then(res => res.data),
+};
+
+export const applicationApi = {
+  apply: (jobId: string, candidateId: string) => api.post(`/applications/${jobId}/apply`, { candidateId }).then(res => res.data),
+  getByJobId: (jobId: string) => api.get(`/applications/job/${jobId}`).then(res => res.data),
+};
+
 export const analyticsApi = {
   getOverview: () => api.get('/analytics/overview').then(res => res.data),
   getConversion: () => api.get('/analytics/conversion').then(res => res.data),
@@ -57,6 +79,8 @@ export const analyticsApi = {
   getSources: () => api.get('/analytics/sources').then(res => res.data),
   getCohorts: () => api.get('/analytics/cohorts').then(res => res.data),
   getRolePerformance: () => api.get('/analytics/role-performance').then(res => res.data),
+  getRecruiterStats: () => api.get('/analytics/recruiters').then(res => res.data),
+  getDIMetrics: () => api.get('/analytics/di-metrics').then(res => res.data),
 };
 
 export default api;

@@ -42,3 +42,17 @@ export const useAnalyticsRolePerformance = () => {
     queryFn: () => analyticsApi.getRolePerformance(),
   });
 };
+
+export const useAnalyticsRecruiters = () => {
+  return useQuery({
+    queryKey: ['analytics-recruiters'],
+    queryFn: () => analyticsApi.getRecruiterStats(),
+  });
+};
+
+export const useAnalyticsDI = () => {
+  return useQuery({
+    queryKey: ['analytics-di'],
+    queryFn: () => analyticsApi.getDIMetrics(),
+  });
+};

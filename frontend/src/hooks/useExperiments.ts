@@ -1,51 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
+import { experimentApi } from '@/lib/api';
 
 export const useExperiments = () => {
   const queryClient = useQueryClient();
 
   const getExperiments = useQuery({
     queryKey: ['experiments'],
-    queryFn: async () => {
-      const response = await api.get('/api/experiments');
-      return response.data;
-    }
+    queryFn: () => experimentApi.getAll()
   });
 
   const getExperiment = (id: string) => useQuery({
     queryKey: ['experiments', id],
-    queryFn: async () => {
-      const response = await api.get(`/api/experiments/${id}`);
-      return response.data;
-    },
+    queryFn: () => experimentApi.getById(id),
     enabled: !!id
   });
 
   const getComparison = (id: string) => useQuery({
     queryKey: ['experiments', id, 'compare'],
-    queryFn: async () => {
-      const response = await api.get(`/api/experiments/${id}/compare`);
-      return response.data;
-    },
+    queryFn: () => experimentApi.getComparison(id),
     enabled: !!id
   });
 
   const createExperiment = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await api.post('/api/experiments', data);
-      return response.data;
-    },
+    mutationFn: (data: any) => experimentApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['experiments'] });
     }
   });
 
   const runExperiment = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await api.post(`/api/experiments/${id}/run`);
-      return response.data;
-    },
+    mutationFn: (id: string) => experimentApi.run(id),
     onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['experiments'] });
       queryClient.invalidateQueries({ queryKey: ['experiments', id] });
       queryClient.invalidateQueries({ queryKey: ['experiments', id, 'compare'] });
     }

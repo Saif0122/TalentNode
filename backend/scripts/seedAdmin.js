@@ -17,6 +17,7 @@ const seedAdmin = async () => {
     if (admin) {
       console.log('Admin user already exists. Updating password...');
       admin.password = adminPassword;
+      admin.isActive = true;
       await admin.save();
     } else {
       console.log('Creating new admin user...');
@@ -25,6 +26,7 @@ const seedAdmin = async () => {
         email: adminEmail,
         password: adminPassword,
         role: 'admin',
+        isActive: true,
         provider: 'credentials'
       });
     }

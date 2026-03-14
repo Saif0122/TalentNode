@@ -56,6 +56,12 @@ const jobSchema = new mongoose.Schema({
   }
 });
 
+// Performance indexes
+jobSchema.index({ status: 1 });
+jobSchema.index({ createdAt: -1 });
+jobSchema.index({ postedBy: 1 });
+jobSchema.index({ requiredSkills: 1 });
+
 const Job = mongoose.model('Job', jobSchema);
 
 module.exports = Job;

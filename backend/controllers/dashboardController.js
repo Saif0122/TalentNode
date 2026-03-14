@@ -1,6 +1,8 @@
 const Job = require('../models/Job');
 const Candidate = require('../models/Candidate');
-const User = require('../models/User'); // Include User in case we need user counts
+const User = require('../models/User'); 
+const JobRequest = require('../models/JobRequest');
+const Interview = require('../models/Interview');
 
 // @desc    Get dashboard metrics & stats
 // @route   GET /api/dashboard/stats
@@ -9,18 +11,15 @@ exports.getStats = async (req, res, next) => {
   try {
     const totalCandidates = await Candidate.countDocuments();
     const totalJobs = await Job.countDocuments();
-    const activeJobs = await Job.countDocuments({ status: 'published' }); // Count published jobs only
+    const activeJobs = await Job.countDocuments({ status: 'published' }); 
+    const pendingJobRequests = await JobRequest.countDocuments({ status: 'Pending' });
     
-    // Total applications - dummy stat to show scale (computed from candidates with specific status if existed)
-    // For now we compute a multiple, or keep a count of upload histories
-    const totalApplications = totalCandidates * 2; // Simulation
+    const totalApplications = await Interview.countDocuments();
 
-    // Resumes parsed total vs today simulation
-    // Since we don't have a reliable 'parsed today' without complex aggregate, we just return the count of parsedResumes
+    // Resumes parsed total
     const candidatesWithResumes = await Candidate.countDocuments({ parsedResume: { $exists: true, $ne: {} } });
     
-    // High-match candidates (> 85% match score simulation)
-    // Actually we don't store scores globally yet apart from parsedResume.score
+    // High-match candidates (>= 85% match score)
     const highMatchCandidates = await Candidate.countDocuments({
       'parsedResume.score': { $gte: 85 }
     });
@@ -107,25 +106,25 @@ exports.getTopSkills = async (req, res, next) => {
 // @access  Private
 exports.getConversion = async (req, res, next) => {
   try {
-    // Generate some computed/mock data based on active DB numbers 
-    // since 'Hired' or 'Interview' states aren't formally modeled in the schema yet.
-    const totalCandidates = await Candidate.countDocuments();
-    
-    let interviews = Math.floor(totalCandidates * 0.4);
-    let hired = Math.floor(totalCandidates * 0.1);
+    const [applied, screened, interviewed, offered, hired] = await Promise.all([
+      Candidate.countDocuments({ status: 'Applied' }),
+      Candidate.countDocuments({ status: 'Screening' }),
+      Candidate.countDocuments({ status: 'Interview' }),
+      Candidate.countDocuments({ status: 'Offer' }),
+      Candidate.countDocuments({ status: 'Hired' })
+    ]);
 
-    if (totalCandidates === 0) {
-      interviews = 0;
-      hired = 0;
-    }
+    const totalCandidates = applied + screened + interviewed + offered + hired;
 
     res.status(200).json({
       success: true,
       data: {
-        applied: totalCandidates,
-        interviewed: interviews,
-        hired: hired,
-        conversionRate: totalCandidates > 0 ? ((hired/totalCandidates)*100).toFixed(1) : 0
+        applied,
+        screened,
+        interviewed,
+        offered,
+        hired,
+        conversionRate: totalCandidates > 0 ? ((hired / totalCandidates) * 100).toFixed(1) : '0.0'
       }
     });
   } catch (error) {

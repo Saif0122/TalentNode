@@ -15,9 +15,12 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const candidateRoutes = require('./routes/candidateRoutes');
 const jobRoutes = require('./routes/jobRoutes');
+const applicationRoutes = require('./routes/applicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const userRoutes = require('./routes/userRoutes');
 const schedulingRoutes = require('./routes/schedulingRoutes');
+const connectionRoutes = require('./routes/connectionRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 
 const app = express();
 
@@ -40,11 +43,14 @@ app.use('/uploads', express.static('uploads'));
 
 // Mount routes
 app.use('/api/auth', authRoutes);
-app.use('/api', candidateRoutes); // NOTE: This handles candidates and potentially uploads
+app.use('/api/candidates', candidateRoutes); // Changed path from /api to /api/candidates
 app.use('/api/jobs', jobRoutes);
+app.use('/api/applications', applicationRoutes); // Added new application route
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/scheduling', schedulingRoutes);
+app.use('/api/connections', connectionRoutes);
+app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', require('./routes/dashboardRoutes')); // Dynamic Dashboard Endpoints
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/experiments', require('./routes/experimentRoutes'));
@@ -53,6 +59,15 @@ app.use('/api/reports', require('./routes/reportRoutes'));
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'success', message: 'TalentNode Backend is healthy' });
+});
+
+// 404 Catch-All for unknown routes
+app.use((req, res) => {
+  res.status(404).json({
+    status: 'fail',
+    message: 'API route not found',
+    path: req.originalUrl
+  });
 });
 
 // Generic Error Handler

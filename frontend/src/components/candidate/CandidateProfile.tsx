@@ -96,7 +96,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
               Senior Software Engineer
             </span>
             <span className="text-slate-500 dark:text-slate-400 font-bold text-sm tracking-tight">
-              {candidate.location || "San Francisco, CA"} • {candidate.parsedResume?.yearsExperience || 8}+ Years Exp.
+              {candidate.location || "Location Not Provided"} • {candidate.parsedResume?.yearsExperience || 0} Years Exp.
             </span>
           </div>
         </div>
@@ -142,7 +142,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
                 <div className="border-b-2 border-primary pb-5 flex justify-between items-start mb-8">
                   <div>
                     <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none mb-1">{candidate.name}</h2>
-                    <p className="text-slate-500 font-bold text-[11px] tracking-widest uppercase">{candidate.email || "alex.rivera.dev@email.com"} | {candidate.phone || "+1 (555) 012-3456"}</p>
+                    <p className="text-slate-500 font-bold text-[11px] tracking-widest uppercase">{candidate.email || "Email Not Provided"} | {candidate.phone || "Phone Not Provided"}</p>
                   </div>
                 </div>
 
@@ -157,20 +157,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
                   <section>
                     <h3 className="text-[11px] font-black text-primary uppercase border-b border-primary/20 mb-5 pb-1 tracking-[0.2em]">Professional Experience</h3>
                     <div className="flex flex-col gap-8">
-                      {(candidate.experienceTimeline || candidate.parsedResume?.experienceTimeline || [
-                        {
-                          role: "Staff Software Engineer",
-                          company: "TechScale Solutions",
-                          duration: "2020 - Present",
-                          description: "Led the migration from monolithic architecture to microservices using Kubernetes. Optimized database queries reducing latency by 45% for the core API. Mentored a team of 6 junior and mid-level developers."
-                        },
-                        {
-                          role: "Full Stack Developer",
-                          company: "InnovateX",
-                          duration: "2017 - 2020",
-                          description: "Developed and launched a real-time analytics dashboard used by 10k+ clients. Implemented CI/CD pipelines reducing deployment time by 60%."
-                        }
-                      ]).map((item: any, idx: number) => (
+                      {(candidate.experienceTimeline || candidate.parsedResume?.experienceTimeline || []).map((item: any, idx: number) => (
                         <div key={idx} className="group">
                           <div className="flex justify-between items-baseline mb-1">
                             <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight">{item.role} | {item.company}</h4>
@@ -217,7 +204,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Candidate Fit Summary</h4>
                 <div className="p-4 bg-primary/5 dark:bg-primary/20 rounded-xl border-l-4 border-primary shadow-inner">
                   <p className="text-sm leading-relaxed italic text-slate-700 dark:text-slate-300 font-bold">
-                    "{candidate.parsedResume?.aiAnalysis || `${candidate.name} is a high-confidence match (94%) for the Senior Software Engineer position. Their experience with large-scale architectural migrations aligns perfectly with our upcoming infrastructure roadmap. Strong technical leadership indicators suggest they can immediately contribute to mentoring initiatives.`}"
+                    "{candidate.parsedResume?.summary || candidate.parsedResume?.aiAnalysis || 'Overall analysis currently being processed...'}"
                   </p>
                 </div>
               </div>
@@ -229,7 +216,7 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
                     Strengths
                   </h4>
                   <ul className="space-y-2">
-                    {(candidate.parsedResume?.reasons || ["Distributed Systems", "K8s & Docker Exp.", "Mentorship History"]).slice(0, 3).map((reason: string, i: number) => (
+                    {(candidate.parsedResume?.reasons || []).slice(0, 3).map((reason: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-[11px] font-black text-slate-700 dark:text-slate-300">
                         <span className="material-symbols-outlined text-emerald-500 text-sm font-black mt-0.5">check</span>
                         <span>{reason}</span>
@@ -273,12 +260,14 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
                     ></circle>
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{candidate.parsedResume?.score || 94}%</span>
+                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{candidate.parsedResume?.score || 0}%</span>
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider mb-0.5">High Confidence Match</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">Based on 12+ matching key criteria</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider mb-0.5">
+                    {candidate.parsedResume?.score >= 85 ? "High Confidence Match" : candidate.parsedResume?.score >= 60 ? "Strong Match" : "Evaluation Pending"}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">AI Generated Analysis</p>
                 </div>
               </div>
             </div>

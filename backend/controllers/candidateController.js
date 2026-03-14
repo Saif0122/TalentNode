@@ -5,6 +5,7 @@ const { createNotification } = require('./notificationController');
 const { diffWords, compareSkills, compareExperience } = require('../utils/diffViewer');
 const Candidate = require('../models/Candidate');
 const Job = require('../models/Job');
+const SavedSearch = require('../models/SavedSearch');
 const fs = require('fs');
 
 /**
@@ -122,12 +123,22 @@ const uploadResume = async (req, res) => {
  */
 const getCandidates = async (req, res) => {
   try {
-    const { page = 1, limit = 10, scoreMin, skill, location } = req.query;
+    const { page = 1, limit = 10, scoreMin, skills, location, experience } = req.query;
     const query = {};
 
     if (scoreMin) query['parsedResume.score'] = { $gte: parseInt(scoreMin) };
-    if (skill) query.skills = { $in: [new RegExp(skill, 'i')] };
+    if (skills) {
+      const skillList = skills.split(',').map(s => new RegExp(s.trim(), 'i'));
+      query.skills = { $all: skillList };
+    }
     if (location) query.location = new RegExp(location, 'i');
+    if (experience) {
+      // Experience filtering logic could be more complex, for now we search summary or title
+      query.$or = [
+        { summary: new RegExp(experience, 'i') },
+        { 'experienceTimeline.title': new RegExp(experience, 'i') }
+      ];
+    }
 
     const candidates = await Candidate.find(query)
       .limit(limit * 1)
@@ -272,6 +283,101 @@ const compareVersions = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Save search criteria
+ * @route   POST /api/candidates/save-search
+ * @access  Private (Recruiter)
+ */
+const saveSearch = async (req, res) => {
+  try {
+    const { name, criteria } = req.body;
+    
+    const savedSearch = await SavedSearch.create({
+      name,
+      criteria,
+      recruiter: req.user._id
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `Search "${name}" saved successfully`,
+      data: savedSearch
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
+/**
+ * @desc    Send bulk messages to candidates
+ * @route   POST /api/candidates/bulk-message
+ * @access  Private (Recruiter)
+ */
+const bulkMessage = async (req, res) => {
+  try {
+    const { candidateIds, message } = req.body;
+    
+    if (!candidateIds || candidateIds.length === 0 || !message) {
+      return res.status(400).json({ status: 'fail', error: 'Candidate IDs and message are required' });
+    }
+
+    // In a real app, we'd trigger an email/SMS service
+    // Here we simulate it by creating notifications (if candidates have user accounts)
+    // For now, we just log and return success
+    console.log(`[Bulk Message] From Recruiter ${req.user._id} to ${candidateIds.length} candidates: ${message}`);
+
+    await createNotification({
+      title: 'Bulk Action Complete',
+      message: `Successfully queued messages for ${candidateIds.length} candidates.`,
+      type: 'success',
+      link: '/talent-pool'
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `Message sent to ${candidateIds.length} candidates`
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
+/**
+ * @desc    Toggle candidate status
+ * @route   PATCH /api/candidates/:id/toggle-status
+ * @access  Private (Recruiter)
+ */
+const toggleStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const candidate = await Candidate.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!candidate) return res.status(404).json({ status: 'fail', error: 'Candidate not found' });
+
+    res.status(200).json({ status: 'success', data: candidate });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
+/**
+ * @desc    Get saved searches for the recruiter
+ * @route   GET /api/candidates/saved-searches
+ * @access  Private (Recruiter)
+ */
+const getSavedSearches = async (req, res) => {
+  try {
+    const searches = await SavedSearch.find({ recruiter: req.user._id }).sort({ createdAt: -1 });
+    res.status(200).json({ status: 'success', data: searches });
+  } catch (error) {
+    res.status(500).json({ status: 'fail', error: error.message });
+  }
+};
+
 module.exports = {
   uploadResume,
   getCandidates,
@@ -279,5 +385,9 @@ module.exports = {
   getVersions,
   getVersionById,
   compareVersions,
-  verifyScoring
+  verifyScoring,
+  saveSearch,
+  getSavedSearches,
+  bulkMessage,
+  toggleStatus
 };

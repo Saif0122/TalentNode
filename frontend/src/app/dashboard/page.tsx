@@ -91,7 +91,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
             title="Active Jobs" 
             value={statsLoading ? "..." : stats.activeJobs} 
@@ -109,6 +109,12 @@ export default function DashboardPage() {
             value={statsLoading ? "..." : stats.highMatchCandidates} 
             trend="+5% new matches" 
             sparkline={{ values: [60, 30, 50, 70, 100, 80], bgColor: 'bg-ai-accent/10', barColor: 'bg-ai-accent' }} 
+          />
+          <StatCard 
+            title="Job Requests" 
+            value={statsLoading ? "..." : stats.pendingJobRequests} 
+            trend="Needs Review" 
+            sparkline={{ values: [10, 20, 40, 30, 50, 40], bgColor: 'bg-amber-100/50', barColor: 'bg-amber-400' }} 
           />
         </div>
 

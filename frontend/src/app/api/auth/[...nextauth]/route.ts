@@ -8,8 +8,22 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      clientId: (() => {
+        const id = process.env.GOOGLE_CLIENT_ID;
+        if (!id || id === 'mock_client_id') {
+          console.error('[OAuth Error] GOOGLE_CLIENT_ID is missing or using mock value');
+          return "INVALID_CLIENT_ID";
+        }
+        return id;
+      })(),
+      clientSecret: (() => {
+        const secret = process.env.GOOGLE_CLIENT_SECRET;
+        if (!secret || secret === 'mock_client_secret') {
+          console.error('[OAuth Error] GOOGLE_CLIENT_SECRET is missing or using mock value');
+          return "INVALID_CLIENT_SECRET";
+        }
+        return secret;
+      })(),
       authorization: {
         params: {
           prompt: "consent",
@@ -81,7 +95,9 @@ export const authOptions: NextAuthOptions = {
           const res = await axios.post(`${API_URL}/auth/google`, {
             email: user.email,
             name: user.name,
-            role: "candidate", // Default role
+            googleAccessToken: account.access_token,
+            googleRefreshToken: account.refresh_token,
+            googleTokenExpiry: account.expires_at ? new Date(account.expires_at * 1000) : null
           });
 
           // Extract token from Set-Cookie header

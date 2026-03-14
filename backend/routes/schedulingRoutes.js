@@ -12,10 +12,17 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 router.use(protect);
 router.use(authorize('recruiter', 'admin'));
 
-router.route('/create').post(createInterview);
-router.route('/events').get(getInterviews);
+// REST-compliant routes
+router.route('/')
+  .post(createInterview)  // POST /api/scheduling
+  .get(getInterviews);    // GET /api/scheduling
+
 router.route('/:id')
-  .patch(updateInterview)
-  .delete(deleteInterview);
+  .patch(updateInterview)   // PATCH /api/scheduling/:id
+  .delete(deleteInterview); // DELETE /api/scheduling/:id
+
+// Legacy aliases kept for backward compatibility during transition
+router.post('/create', createInterview);
+router.get('/events', getInterviews);
 
 module.exports = router;

@@ -8,8 +8,29 @@ export default withAuth(
      
     // Auth redirect - reverse proxy logic
     const isAuthPage = req.nextUrl.pathname.startsWith("/auth");
-    if (isAuthPage && token) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    if (isAuthPage) {
+      if (token) {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+      return null;
+    }
+
+    if (!token) {
+      let from = req.nextUrl.pathname;
+      if (req.nextUrl.search) {
+        from += req.nextUrl.search;
+      }
+
+      return NextResponse.redirect(
+        new URL(`/auth/login?from=${encodeURIComponent(from)}`, req.url)
+      );
+    }
+
+    // Admin Role Protection
+    const isAdminRoute = req.nextUrl.pathname.startsWith('/admin') || req.nextUrl.pathname.startsWith('/dashboard/admin');
+    if (isAdminRoute && token.role !== 'admin') {
+      console.warn(`[RBAC] Non-admin user (${token.email}) attempted to access admin route: ${req.nextUrl.pathname}`);
+      return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 
     // RBAC Redirects
@@ -48,5 +69,12 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/auth/:path*",
+    "/experiments/:path*",
+    "/analytics/:path*",
+    "/talent-pool/:path*",
+    "/candidates/:path*",
+    "/jobs/:path*",
+    "/report/:path*",
+    "/resumes/:path*",
   ],
 };

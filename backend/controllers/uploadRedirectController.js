@@ -14,8 +14,8 @@ const uploadResume = async (req, res) => {
     const rawText = req.body.rawText;
 
     if (!file && !rawText) {
-      return res.status(400).json({ 
-        status: 'fail', 
+      return res.status(400).json({
+        status: 'fail',
         error: 'Resume file or raw pasted text is required',
         logs: ['[ERROR] No data received']
       });
@@ -26,7 +26,7 @@ const uploadResume = async (req, res) => {
     } else {
       logs.push(`[INFO] Received raw text paste (${rawText.length} characters)`);
     }
-    
+
     logs.push('[INFO] Starting ingestion service...');
 
     let buffer = null;
@@ -51,7 +51,7 @@ const uploadResume = async (req, res) => {
     const candidateEmail = ingestedData.email || '';
 
     // Check if candidate already exists
-    let candidate = await Candidate.findOne({ 
+    let candidate = await Candidate.findOne({
       $or: [
         { email: candidateEmail && candidateEmail !== '' ? candidateEmail : undefined },
         { name: candidateName }
@@ -65,7 +65,7 @@ const uploadResume = async (req, res) => {
         parsedData: ingestedData,
         resumeUrl: file ? file.path : 'text-paste'
       });
-      
+
       // Update top-level fields with latest data
       candidate.name = candidateName;
       if (candidateEmail) candidate.email = candidateEmail;
@@ -74,7 +74,25 @@ const uploadResume = async (req, res) => {
       candidate.skills = ingestedData.skills || candidate.skills;
       candidate.experienceTimeline = ingestedData.experienceTimeline || candidate.experienceTimeline;
       candidate.parsedResume = ingestedData;
-      if (file) candidate.resumeUrl = file.path;
+      candidate.rawResumeText = ingestedData.rawText;
+      candidate.experienceYears = ingestedData.yearsExperience || 0;
+      candidate.education = ingestedData.education || [];
+
+      if (file) {
+        candidate.resumeUrl = file.path;
+        candidate.uploadedFiles.push({
+          fileName: file.originalname,
+          fileUrl: file.path
+        });
+      }
+
+      // Add to analysis history
+      candidate.analysisHistory.push({
+        score: ingestedData.score || 0,
+        summary: ingestedData.summary || '',
+        reasons: ingestedData.reasons || [],
+        matchDetails: ingestedData
+      });
 
       await candidate.save();
       logs.push('[SUCCESS] Resume version added and candidate profile updated');
@@ -89,9 +107,19 @@ const uploadResume = async (req, res) => {
         skills: ingestedData.skills || [],
         experienceTimeline: ingestedData.experienceTimeline || [],
         parsedResume: ingestedData,
+        rawResumeText: ingestedData.rawText,
+        experienceYears: ingestedData.yearsExperience || 0,
+        education: ingestedData.education || [],
         resumeUrl: file ? file.path : 'text-paste',
-        uploadHistory: [{ 
-          fileName: file ? file.originalname : 'text-paste', 
+        uploadedFiles: file ? [{ fileName: file.originalname, fileUrl: file.path }] : [],
+        analysisHistory: [{
+          score: ingestedData.score || 0,
+          summary: ingestedData.summary || '',
+          reasons: ingestedData.reasons || [],
+          matchDetails: ingestedData
+        }],
+        uploadHistory: [{
+          fileName: file ? file.originalname : 'text-paste',
           parsedData: ingestedData,
           resumeUrl: file ? file.path : 'text-paste'
         }]
@@ -114,8 +142,8 @@ const uploadResume = async (req, res) => {
   } catch (error) {
     console.error('Upload Error:', error);
     logs.push(`[ERROR] ${error.message}`);
-    res.status(500).json({ 
-      status: 'fail', 
+    res.status(500).json({
+      status: 'fail',
       error: error.message,
       logs
     });

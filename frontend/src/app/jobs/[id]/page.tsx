@@ -6,10 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useJob, useDeleteJob } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useCandidates } from '@/hooks/useCandidates';
-import { Card, Badge, Button } from '@/components/ui';
-import { JobRankingList } from '@/components/job/JobRankingList';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { applicationApi, candidateApi } from '@/lib/api';
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -21,11 +18,66 @@ export default function JobDetailPage() {
   const deleteJob = useDeleteJob();
   
   const [activeTab, setActiveTab] = useState('jd');
+  const [isApplying, setIsApplying] = useState(false);
 
   const isRecruiter = user?.role === 'admin' || user?.role === 'recruiter';
   
   const job = jobData?.data;
   const candidates = candidatesData?.data?.candidates || [];
+
+  const handleApply = async () => {
+    if (!user?.email) {
+      alert('Please log in to apply.');
+      return;
+    }
+
+    try {
+      setIsApplying(true);
+      // Find candidate by email
+      const candidatesRes = await candidateApi.getAll({ email: user.email });
+      const candidateId = candidatesRes.data?.candidates?.[0]?._id;
+
+      if (!candidateId) {
+        alert('Please upload your resume in the Talent Pool first to create a profile before applying.');
+        router.push('/resumes/upload'); // Corrected path
+        return;
+      }
+
+      await applicationApi.apply(params.id as string, candidateId);
+      alert('Application submitted successfully!');
+    } catch (err: any) {
+      alert(err.error || 'Failed to submit application.');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const [isRequesting, setIsRequesting] = useState(false);
+  const handleRequest = async (type: string) => {
+    if (!user?.email) {
+      alert('Please log in to make a request.');
+      return;
+    }
+
+    try {
+      setIsRequesting(true);
+      const candidatesRes = await candidateApi.getAll({ email: user.email });
+      const candidateId = candidatesRes.data?.candidates?.[0]?._id;
+
+      if (!candidateId) {
+        alert('Please upload your resume first to create a profile.');
+        router.push('/resumes/upload');
+        return;
+      }
+
+      await jobApi.submitRequest(params.id as string, candidateId, `Candidate requested ${type}`);
+      alert('Request sent to the hiring team!');
+    } catch (err: any) {
+      alert(err.error || 'Failed to send request.');
+    } finally {
+      setIsRequesting(false);
+    }
+  };
 
   const handleDelete = () => {
     if (confirm('Are you sure you want to delete this job completely? This action cannot be undone.')) {
@@ -84,7 +136,7 @@ export default function JobDetailPage() {
                 </div>
               </div>
               
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 {isRecruiter ? (
                   <>
                     <Link href={`/jobs/${job._id}/edit`}>
@@ -97,7 +149,17 @@ export default function JobDetailPage() {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="primary">Apply Now</Button>
+                  <>
+                    <Button variant="ghost" className="border border-primary/20 text-primary flex items-center gap-2" onClick={() => handleRequest('Review')} disabled={isRequesting}>
+                      <span className="material-symbols-outlined text-lg">psychology</span> Request Review
+                    </Button>
+                    <Button variant="ghost" className="border border-primary/20 text-primary flex items-center gap-2" onClick={() => handleRequest('Connection')} disabled={isRequesting}>
+                      <span className="material-symbols-outlined text-lg">hub</span> Request Connection
+                    </Button>
+                    <Button variant="primary" onClick={handleApply} disabled={isApplying}>
+                      {isApplying ? 'Applying...' : 'Apply Now'}
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -113,12 +175,20 @@ export default function JobDetailPage() {
               Job Description
             </button>
             {isRecruiter && (
-              <button 
-                onClick={() => setActiveTab('ranking')}
-                className={cn("px-6 py-3 border-b-2 text-sm font-medium transition-all", activeTab === 'ranking' ? "border-primary text-primary" : "border-transparent text-slate-500")}
-              >
-                Candidate Match Setup
-              </button>
+              <>
+                <button 
+                  onClick={() => setActiveTab('ranking')}
+                  className={cn("px-6 py-3 border-b-2 text-sm font-medium transition-all", activeTab === 'ranking' ? "border-primary text-primary" : "border-transparent text-slate-500")}
+                >
+                  Candidate Match Setup
+                </button>
+                <button 
+                  onClick={() => setActiveTab('requests')}
+                  className={cn("px-6 py-3 border-b-2 text-sm font-medium transition-all", activeTab === 'requests' ? "border-primary text-primary" : "border-transparent text-slate-500")}
+                >
+                  Incoming Requests
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -126,6 +196,10 @@ export default function JobDetailPage() {
         {activeTab === 'ranking' && isRecruiter ? (
           <div className="space-y-4">
              <JobRankingList candidates={candidates} />
+          </div>
+        ) : activeTab === 'requests' && isRecruiter ? (
+          <div className="space-y-4">
+             <JobRequestList jobId={job._id} />
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start pb-12">

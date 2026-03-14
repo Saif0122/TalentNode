@@ -6,7 +6,7 @@ import { Card, Badge, Button } from '@/components/ui';
 import { PipelineFunnel } from '@/components/analytics/PipelineFunnel';
 import { SourcePerformance } from '@/components/analytics/SourcePerformance';
 import { cn } from '@/lib/utils';
-import { useAnalyticsOverview, useAnalyticsConversion, useAnalyticsSources, useAnalyticsTopSkills } from '@/hooks/useAnalytics';
+import { useAnalyticsOverview, useAnalyticsConversion, useAnalyticsSources, useAnalyticsTopSkills, useAnalyticsRecruiters, useAnalyticsDI } from '@/hooks/useAnalytics';
 
 const KPICard = ({ title, value, trend, icon, color, trendColor, loading }: any) => (
   <Card className="p-6 shadow-sm dark:bg-slate-900 border-slate-200 dark:border-slate-800">
@@ -50,6 +50,8 @@ export default function AnalyticsPage() {
   const { data: conversion, isLoading: conversionLoading } = useAnalyticsConversion();
   const { data: sources, isLoading: sourcesLoading } = useAnalyticsSources();
   const { data: topSkills } = useAnalyticsTopSkills();
+  const { data: recruiters, isLoading: recruitersLoading } = useAnalyticsRecruiters();
+  const { data: diMetrics, isLoading: diLoading } = useAnalyticsDI();
 
   const stats = overview?.data || {};
 
@@ -167,8 +169,16 @@ export default function AnalyticsPage() {
           </div>
           <Card className="p-8 space-y-8 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">D&I Metrics</h3>
-            <DIMetric label="Gender Diversity" percentage={75} description="Pipeline representation" colorClass="border-primary border-r-slate-200 dark:border-r-slate-800" />
-            <DIMetric label="Underrepresented" percentage={42} description="Interview stage target" colorClass="border-primary/40 border-t-primary border-l-slate-200 dark:border-l-slate-800" />
+            {diLoading ? (
+              <div className="space-y-6 animate-pulse">
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
+                <div className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
+              </div>
+            ) : (
+              (diMetrics?.data || []).map((m: any) => (
+                <DIMetric key={m.label} label={m.label} percentage={m.percentage} description={m.description} colorClass={m.label.includes('Gender') ? "border-primary border-r-slate-200 dark:border-r-slate-800" : "border-primary/40 border-t-primary border-l-slate-200 dark:border-l-slate-800"} />
+              ))
+            )}
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
                <p className="text-[10px] text-slate-400 italic font-medium leading-relaxed uppercase tracking-wider">Anonymized data based on voluntary disclosures and AI demographic estimation.</p>
             </div>
@@ -194,78 +204,45 @@ export default function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs overflow-hidden">
-                        <div className="h-full w-full bg-blue-200/50 flex items-center justify-center">DC</div>
+                {recruitersLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">Calculating recruiter performance...</td>
+                  </tr>
+                ) : (recruiters?.data || []).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">No recruiter activity recorded yet.</td>
+                  </tr>
+                ) : (recruiters?.data || []).map((r: any) => (
+                  <tr key={r._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                          {r.name.split(' ').map((n: string) => n[0]).join('')}
+                        </div>
+                        <span className="text-sm font-semibold">{r.name}</span>
                       </div>
-                      <span className="text-sm font-semibold">David Chen</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">Engineering</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold">142</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold">8</td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                        <div className="h-full bg-green-500 w-[90%] rounded-full"></div>
+                    </td>
+                    <td className="px-6 py-4 text-sm">{r.department || 'Enterprise'}</td>
+                    <td className="px-6 py-4 text-sm text-center font-bold">{r.screened}</td>
+                    <td className="px-6 py-4 text-sm text-center font-bold">{r.hires}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full w-24">
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(r.velocity * 100, 100)}%` }}></div>
+                        </div>
+                        <span className="text-xs font-bold">{r.velocity > 0.05 ? 'Fast' : 'Optimal'}</span>
                       </div>
-                      <span className="text-xs font-bold">Fast</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-bold rounded-full">Above Target</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs overflow-hidden">
-                        <div className="h-full w-full bg-purple-200/50 flex items-center justify-center">ER</div>
-                      </div>
-                      <span className="text-sm font-semibold">Elena Rodriguez</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">Product & Design</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold">98</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold">5</td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                        <div className="h-full bg-blue-500 w-[75%] rounded-full"></div>
-                      </div>
-                      <span className="text-xs font-bold">Optimal</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-full">On Track</span>
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs overflow-hidden">
-                         <div className="h-full w-full bg-orange-200/50 flex items-center justify-center">JM</div>
-                      </div>
-                      <span className="text-sm font-semibold">Jameson Miller</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">Sales</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold">215</td>
-                  <td className="px-6 py-4 text-sm text-center font-bold">12</td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
-                        <div className="h-full bg-green-500 w-[95%] rounded-full"></div>
-                      </div>
-                      <span className="text-xs font-bold">Fast</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-bold rounded-full">MVP</span>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "px-2 py-1 text-xs font-bold rounded-full",
+                        r.hires > 0 ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" : "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                      )}>
+                        {r.hires > 0 ? 'Exceeding' : 'On Track'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
