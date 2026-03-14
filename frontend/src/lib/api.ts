@@ -50,4 +50,13 @@ export const userApi = {
   updateNotifications: (data: any) => api.patch('/users/notifications', data).then(res => res.data),
 };
 
+export const analyticsApi = {
+  getOverview: () => api.get('/analytics/overview').then(res => res.data),
+  getConversion: () => api.get('/analytics/conversion').then(res => res.data),
+  getTopSkills: () => api.get('/analytics/top-skills').then(res => res.data),
+  getSources: () => api.get('/analytics/sources').then(res => res.data),
+  getCohorts: () => api.get('/analytics/cohorts').then(res => res.data),
+  getRolePerformance: () => api.get('/analytics/role-performance').then(res => res.data),
+};
+
 export default api;

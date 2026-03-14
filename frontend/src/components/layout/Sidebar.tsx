@@ -13,6 +13,7 @@ const navItems = [
   { label: 'Candidates', icon: 'group', href: '/candidates' },
   { label: 'Talent Pool', icon: 'person_add', href: '/talent-pool' },
   { label: 'Analytics', icon: 'analytics', href: '/analytics' },
+  { label: 'Experiments', icon: 'science', href: '/experiments' },
 ];
 
 export const Sidebar = () => {

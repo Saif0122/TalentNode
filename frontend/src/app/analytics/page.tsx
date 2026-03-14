@@ -6,8 +6,9 @@ import { Card, Badge, Button } from '@/components/ui';
 import { PipelineFunnel } from '@/components/analytics/PipelineFunnel';
 import { SourcePerformance } from '@/components/analytics/SourcePerformance';
 import { cn } from '@/lib/utils';
+import { useAnalyticsOverview, useAnalyticsConversion, useAnalyticsSources, useAnalyticsTopSkills } from '@/hooks/useAnalytics';
 
-const KPICard = ({ title, value, trend, icon, color, trendColor }: any) => (
+const KPICard = ({ title, value, trend, icon, color, trendColor, loading }: any) => (
   <Card className="p-6 shadow-sm dark:bg-slate-900 border-slate-200 dark:border-slate-800">
     <div className="flex justify-between items-start mb-4">
       <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">{title}</span>
@@ -15,13 +16,17 @@ const KPICard = ({ title, value, trend, icon, color, trendColor }: any) => (
         <span className="material-symbols-outlined text-xl">{icon}</span>
       </div>
     </div>
-    <p className="text-3xl font-black mb-1 text-slate-900 dark:text-white">{value}</p>
+    {loading ? (
+      <div className="h-9 w-24 bg-slate-100 dark:bg-slate-800 animate-pulse rounded mb-1"></div>
+    ) : (
+      <p className="text-3xl font-black mb-1 text-slate-900 dark:text-white">{value}</p>
+    )}
     <div className={cn(
       "flex items-center gap-1.5 text-sm font-bold",
-      trendColor || (trend.includes('+') ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")
+      trendColor || (trend?.includes('+') ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")
     )}>
       <span className="material-symbols-outlined text-sm">
-        {trend.includes('-') && !trend.includes('+') ? 'trending_down' : trend.includes('+') ? 'trending_up' : 'remove'}
+        {trend?.includes('-') && !trend?.includes('+') ? 'trending_down' : trend?.includes('+') ? 'trending_up' : 'remove'}
       </span>
       <span>{trend}</span>
     </div>
@@ -41,6 +46,13 @@ const DIMetric = ({ label, percentage, description, colorClass }: any) => (
 );
 
 export default function AnalyticsPage() {
+  const { data: overview, isLoading: overviewLoading } = useAnalyticsOverview();
+  const { data: conversion, isLoading: conversionLoading } = useAnalyticsConversion();
+  const { data: sources, isLoading: sourcesLoading } = useAnalyticsSources();
+  const { data: topSkills } = useAnalyticsTopSkills();
+
+  const stats = overview?.data || {};
+
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto w-full space-y-8">
@@ -67,20 +79,59 @@ export default function AnalyticsPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <KPICard title="Time to Hire" value="18 days" trend="-2d vs last month" icon="schedule" />
-          <KPICard title="Offer Acceptance" value="84%" trend="+5% trend" icon="how_to_reg" />
-          <KPICard title="AI Matching Accuracy" value="96%" trend="Stable performance" icon="psychology" trendColor="text-slate-400 dark:text-slate-500" />
-          <KPICard title="Cost per Hire" value="$4,200" trend="+$150 vs target" icon="payments" color="bg-red-50 text-red-600 dark:bg-red-900/10" trendColor="text-red-600 dark:text-red-400" />
+          <KPICard 
+            title="Time to Hire" 
+            value={`${stats.avgTimeToHire || 0} days`} 
+            trend={stats.avgTimeToHire < 20 ? "-2d vs last month" : "+1d vs last month"} 
+            icon="schedule" 
+            loading={overviewLoading}
+          />
+          <KPICard 
+            title="Offer Acceptance" 
+            value={`${stats.offerAcceptanceRate || 0}%`} 
+            trend="+5% trend" 
+            icon="how_to_reg" 
+            loading={overviewLoading}
+          />
+          <KPICard 
+            title="AI Matching Accuracy" 
+            value={`${stats.aiAccuracy || 0}%`} 
+            trend="Stable performance" 
+            icon="psychology" 
+            trendColor="text-slate-400 dark:text-slate-500" 
+            loading={overviewLoading}
+          />
+          <KPICard 
+            title="Cost per Hire" 
+            value={`$${stats.costPerHire?.toLocaleString() || '0'}`} 
+            trend="+$150 vs target" 
+            icon="payments" 
+            color="bg-red-50 text-red-600 dark:bg-red-900/10" 
+            trendColor="text-red-600 dark:text-red-400" 
+            loading={overviewLoading}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="p-8 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <h3 className="text-lg font-black mb-8 text-slate-900 dark:text-white uppercase tracking-tight">Candidate Pipeline Funnel</h3>
-            <PipelineFunnel />
+            {conversionLoading ? (
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-12 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>)}
+              </div>
+            ) : (
+              <PipelineFunnel data={conversion?.data} />
+            )}
           </Card>
           <Card className="p-8 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
             <h3 className="text-lg font-black mb-8 text-slate-900 dark:text-white uppercase tracking-tight">Source Performance</h3>
-            <SourcePerformance />
+            {sourcesLoading ? (
+              <div className="space-y-6 animate-pulse">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>)}
+              </div>
+            ) : (
+              <SourcePerformance data={sources?.data} />
+            )}
           </Card>
         </div>
 
@@ -93,18 +144,24 @@ export default function AnalyticsPage() {
                 </div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Skill Demand Trends</h3>
               </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-                <span className="px-6 py-2.5 bg-primary text-white rounded-full text-xl font-black transition-all hover:scale-110 hover:-rotate-1 cursor-pointer shadow-lg shadow-primary/20">React.js</span>
-                <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-md font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors cursor-pointer">Python</span>
-                <span className="px-8 py-3.5 bg-primary/20 text-primary dark:text-primary rounded-full text-2xl font-black transition-all hover:scale-110 hover:rotate-2 cursor-pointer border border-primary/20">Machine Learning</span>
-                <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 transition-colors">Node.js</span>
-                <span className="px-6 py-2 bg-primary/10 text-primary rounded-full text-lg font-black border border-primary/10 hover:bg-primary/20 transition-all cursor-pointer">AWS</span>
-                <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm font-medium text-slate-500">Docker</span>
-                <span className="px-7 py-3 bg-primary/80 text-white rounded-full text-lg font-black transition-all hover:scale-110 cursor-pointer shadow-md">Kubernetes</span>
-                <span className="px-5 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-md font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-colors">TypeScript</span>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-display">
+                {(topSkills?.data || []).map((skill: any, idx: number) => (
+                  <span 
+                    key={skill.name} 
+                    className={cn(
+                      "transition-all hover:scale-110 cursor-pointer text-display",
+                      idx === 0 ? "px-6 py-2.5 bg-primary text-white rounded-full text-xl font-black shadow-lg shadow-primary/20 hover:-rotate-1" :
+                      idx === 1 ? "px-8 py-3.5 bg-primary/20 text-primary dark:text-primary rounded-full text-2xl font-black hover:rotate-2 border border-primary/20" :
+                      idx === 2 ? "px-7 py-3 bg-primary/80 text-white rounded-full text-lg font-black shadow-md" :
+                      "px-4 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-sm font-extrabold text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+                    )}
+                  >
+                    {skill.name}
+                  </span>
+                ))}
               </div>
               <p className="mt-8 text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
-                <span className="font-black text-primary uppercase tracking-tighter mr-2">AI insight:</span> High-priority skills identified across 85% of technical job openings this month. Demand for "React.js" has grown <span className="text-primary font-bold">12%</span> since Q2.
+                <span className="font-black text-primary uppercase tracking-tighter mr-2">AI insight:</span> High-priority skills identified across job openings. Demand for "{topSkills?.data?.[0]?.name || 'React'}" has recently grown.
               </p>
             </div>
           </div>

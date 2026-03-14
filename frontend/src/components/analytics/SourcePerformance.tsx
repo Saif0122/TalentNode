@@ -2,6 +2,10 @@
 
 import React from 'react';
 
+interface SourcePerformanceProps {
+  data?: { source: string; count: number; hired: number; hireRate: number }[];
+}
+
 interface SourceBarProps {
   name: string;
   count: number;
@@ -10,46 +14,58 @@ interface SourceBarProps {
 }
 
 const SourceBar: React.FC<SourceBarProps> = ({ name, count, percentage, colorOpacity }) => (
-  <div className="relative">
-    <div className="flex justify-between text-sm mb-2">
-      <span className="font-medium text-slate-700 dark:text-slate-300">{name}</span>
-      <span className="font-bold text-slate-900 dark:text-slate-100">{count} candidates</span>
+  <div className="relative group">
+    <div className="flex justify-between text-[11px] font-black uppercase tracking-tight mb-2">
+      <span className="text-slate-700 dark:text-slate-300">{name}</span>
+      <span className="text-primary font-bold">{count} candidates</span>
     </div>
-    <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+    <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
       <div 
-        className="h-full bg-primary rounded-full transition-all duration-1000" 
+        className="h-full bg-primary rounded-full transition-all duration-1000 group-hover:brightness-110" 
         style={{ width: `${percentage}%`, opacity: colorOpacity }}
       ></div>
     </div>
   </div>
 );
 
-export const SourcePerformance = () => {
-  const sources = [
-    { name: 'LinkedIn', count: 450, percentage: 85, opacity: 1 },
-    { name: 'Referrals', count: 210, percentage: 45, opacity: 0.7 },
-    { name: 'Careers Page', count: 180, percentage: 38, opacity: 0.5 },
-    { name: 'Indeed', count: 380, percentage: 72, opacity: 0.3 },
+export const SourcePerformance: React.FC<SourcePerformanceProps> = ({ data }) => {
+  const sources = data || [
+    { source: 'LinkedIn', count: 450, hireRate: 15, hired: 20 },
+    { source: 'Referrals', count: 210, hireRate: 35, hired: 15 },
+    { source: 'Careers Page', count: 180, hireRate: 18, hired: 10 },
+    { source: 'Indeed', count: 380, hireRate: 12, hired: 12 },
   ];
+
+  const maxHires = Math.max(...sources.map(s => s.hired), 1);
 
   return (
     <div className="space-y-6">
-       {sources.map(source => (
-         <SourceBar key={source.name} {...source} colorOpacity={source.opacity} />
-       ))}
+       {sources.map((source, idx) => {
+         const percentage = Math.round((source.hired / maxHires) * 100);
+         const opacity = 1 - (idx * 0.15);
+         return (
+           <SourceBar 
+              key={source.source} 
+              name={source.source} 
+              count={source.count} 
+              percentage={percentage} 
+              colorOpacity={opacity} 
+            />
+         );
+       })}
        
        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between">
         <div className="text-center">
-          <p className="text-xs text-slate-500 uppercase font-bold mb-1">Top Quality</p>
-          <p className="text-sm font-bold text-primary">Referrals</p>
+          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Top Quality</p>
+          <p className="text-xs font-black text-primary uppercase tracking-tight">Referrals</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500 uppercase font-bold mb-1">Fastest Hire</p>
-          <p className="text-sm font-bold text-primary">LinkedIn</p>
+          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Fastest Hire</p>
+          <p className="text-xs font-black text-primary uppercase tracking-tight">LinkedIn</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-500 uppercase font-bold mb-1">Lowest CPA</p>
-          <p className="text-sm font-bold text-primary">Careers Page</p>
+          <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Lowest CPA</p>
+          <p className="text-xs font-black text-primary uppercase tracking-tight">Careers Page</p>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Card, Badge, Button } from '@/components/ui';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 
@@ -46,7 +47,32 @@ const RadarChart = () => (
 );
 
 export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate }) => {
+  const [isExporting, setIsExporting] = React.useState(false);
+
   if (!candidate) return null;
+
+  const handleExportPDF = async () => {
+    try {
+      setIsExporting(true);
+      const response = await api.get(`/api/reports/${candidate._id}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Report_${candidate.name.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to export PDF report.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -75,9 +101,19 @@ export const CandidateProfile: React.FC<CandidateProfileProps> = ({ candidate })
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="secondary" className="h-10 px-4 rounded-lg flex items-center gap-2 text-xs font-black uppercase tracking-wider group bg-primary/10 text-primary border-none hover:bg-primary/20">
-            <span className="material-symbols-outlined text-lg group-hover:translate-y-0.5 transition-transform">download</span>
-            Export Report
+          <Button 
+            variant="secondary" 
+            onClick={() => handleExportPDF()}
+            disabled={isExporting}
+            className={cn(
+              "h-10 px-4 rounded-lg flex items-center gap-2 text-xs font-black uppercase tracking-wider group bg-primary/10 text-primary border-none hover:bg-primary/20",
+              isExporting && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <span className={cn("material-symbols-outlined text-lg group-hover:translate-y-0.5 transition-transform", isExporting && "animate-spin")}>
+              {isExporting ? 'hourglass_empty' : 'download'}
+            </span>
+            {isExporting ? 'Exporting...' : 'Export Report'}
           </Button>
           <Button variant="primary" className="h-10 px-4 rounded-lg flex items-center gap-2 text-xs font-black uppercase tracking-wider shadow-lg shadow-primary/10 group bg-primary text-white hover:brightness-110">
             <span className="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">mail</span>
