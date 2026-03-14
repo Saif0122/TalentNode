@@ -46,6 +46,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/dashboard', require('./routes/dashboardRoutes')); // Dynamic Dashboard Endpoints
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/experiments', require('./routes/experimentRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

@@ -49,6 +49,19 @@ const candidateSchema = new mongoose.Schema({
       resumeUrl: String
     }
   ],
+  status: {
+    type: String,
+    enum: ['Applied', 'Screening', 'Interview', 'Offer', 'Hired', 'Rejected'],
+    default: 'Applied'
+  },
+  source: {
+    type: String,
+    enum: ['LinkedIn', 'Referral', 'Indeed', 'Career Page', 'Other'],
+    default: 'Other'
+  },
+  hiredAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

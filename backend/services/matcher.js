@@ -31,75 +31,104 @@ const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
  * @param {Object} parsedResume - The parsed resume object, e.g., { rawText, skills: [], yearsExperience }
  * @returns {Object} { score: number, reasons: string[] }
  */
-const scoreCandidate = (job, parsedResume) => {
+/**
+ * SCORER A: Standard Heuristic
+ * Formula: 50% Skills, 30% Experience, 20% Keywords
+ */
+const scoreCandidateA = (job, parsedResume) => {
   const reasons = [];
   
-  // 1. Tokenize job description and resume raw text
-  const jobDescriptionText = job.description || '';
-  const jobTokens = tokenize(jobDescriptionText);
+  const jobTokens = tokenize(job.description || '');
   const resumeTokens = tokenize(parsedResume.rawText || '');
   
-  // 2. Keyword Match Ratio (General text overlap)
   let overlapCount = 0;
   resumeTokens.forEach(token => {
-    if (jobTokens.has(token)) {
-      overlapCount++;
-    }
+    if (jobTokens.has(token)) overlapCount++;
   });
   
   const keywordMatchRatio = jobTokens.size > 0 ? overlapCount / jobTokens.size : 0;
-  if (keywordMatchRatio > 0.3) {
-    reasons.push("Good general keyword alignment with the job description.");
-  }
+  if (keywordMatchRatio > 0.3) reasons.push("Good general keyword alignment.");
 
-  // 3. Skills Overlap
   const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
   const candidateSkills = new Set((parsedResume.skills || []).map(s => s.toLowerCase()));
   
   let skillOverlapCount = 0;
   requiredSkills.forEach(skill => {
-    if (candidateSkills.has(skill.toLowerCase())) {
-      skillOverlapCount++;
-    }
+    if (candidateSkills.has(skill.toLowerCase())) skillOverlapCount++;
   });
 
   const skillScoreRatio = requiredSkills.length > 0 ? skillOverlapCount / requiredSkills.length : 0;
   if (skillScoreRatio >= 0.5) {
-    reasons.push(`Matches ${skillOverlapCount} out of ${requiredSkills.length} required skills.`);
-  } else if (requiredSkills.length > 0) {
-    reasons.push(`Missing some core required skills (matched ${skillOverlapCount}/${requiredSkills.length}).`);
+    reasons.push(`Matches ${skillOverlapCount}/${requiredSkills.length} required skills.`);
   }
 
-  // 4. Years of Experience
   const exp = parsedResume.yearsExperience || 0;
-  const expRatio = Math.min(exp / 10, 1); // Cap at 10 years for heuristic purposes
-  if (exp >= 5) {
-    reasons.push(`Solid experience level (${exp} years).`);
-  } else {
-    reasons.push(`Junior to mid-level experience (${exp} years).`);
-  }
+  const expRatio = Math.min(exp / 10, 1);
+  reasons.push(`${exp} years of relevant experience.`);
 
-  // 5. Compute Final Score
-  // Formula: 50 * (skillOverlap/requiredSkills) + 30 * (yearsExperience/10) + 20 * (keywordMatchRatio)
   let rawScore = (50 * skillScoreRatio) + (30 * expRatio) + (20 * keywordMatchRatio);
-  
-  // Ensure score is between 0 and 100
   const finalScore = Math.round(clamp(rawScore, 0, 100));
-
-  if (finalScore >= 80) {
-    reasons.unshift("Excellent overall match for this position.");
-  } else if (finalScore >= 50) {
-    reasons.unshift("Moderate match, may require training in some areas.");
-  } else {
-    reasons.unshift("Low match against core requirements.");
-  }
 
   return {
     score: finalScore,
-    reasons
+    reasons,
+    confidence: 85,
+    summary: `Scorer A suggests a ${finalScore}% match based on standard heuristic.`
+  };
+};
+
+/**
+ * SCORER B: Skill-Focused Heuristic
+ * Formula: 70% Skills, 20% Experience, 10% Keywords
+ */
+const scoreCandidateB = (job, parsedResume) => {
+  const reasons = [];
+  
+  const jobTokens = tokenize(job.description || '');
+  const resumeTokens = tokenize(parsedResume.rawText || '');
+  
+  let overlapCount = 0;
+  resumeTokens.forEach(token => {
+    if (jobTokens.has(token)) overlapCount++;
+  });
+  
+  const keywordMatchRatio = jobTokens.size > 0 ? overlapCount / jobTokens.size : 0;
+
+  const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
+  const candidateSkills = new Set((parsedResume.skills || []).map(s => s.toLowerCase()));
+  
+  let skillOverlapCount = 0;
+  const matched = [];
+  requiredSkills.forEach(skill => {
+    if (candidateSkills.has(skill.toLowerCase())) {
+      skillOverlapCount++;
+      matched.push(skill);
+    }
+  });
+
+  const skillScoreRatio = requiredSkills.length > 0 ? skillOverlapCount / requiredSkills.length : 0;
+  if (matched.length > 0) {
+    reasons.push(`Direct skill match for: ${matched.join(', ')}.`);
+  }
+
+  const exp = parsedResume.yearsExperience || 0;
+  const expRatio = Math.min(exp / 5, 1); // Focused on first 5 years
+  reasons.push(`Experience depth: ${exp} years.`);
+
+  // Shifted weights for Scorer B
+  let rawScore = (70 * skillScoreRatio) + (20 * expRatio) + (10 * keywordMatchRatio);
+  const finalScore = Math.round(clamp(rawScore, 0, 100));
+
+  return {
+    score: finalScore,
+    reasons,
+    confidence: 90,
+    summary: `Scorer B (Skill-Focused) emphasizes candidate's specific technical toolkit with a ${finalScore}% score.`
   };
 };
 
 module.exports = {
-  scoreCandidate
+  scoreCandidate: scoreCandidateA, // Default to Scorer A for backward compatibility
+  scoreCandidateA,
+  scoreCandidateB
 };
