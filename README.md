@@ -31,48 +31,160 @@ Build meaningful connections between recruiters and exceptional talent through a
 
 ---
 
-# 📖 Overview
+<p align="center">
 
-TalentNode is a modern full-stack recruitment platform engineered to simplify the hiring lifecycle for both candidates and recruiters.
+<a href="https://talentnode.vercel.app">
+<img src="https://img.shields.io/badge/🌐_Live_Demo-Visit-2563eb?style=for-the-badge">
+</a>
 
-Instead of functioning as a traditional job board, TalentNode delivers an intelligent hiring ecosystem that combines AI-assisted workflows, recruiter analytics, candidate management, secure authentication, and scalable cloud architecture.
+<a href="https://github.com/Saif0122/TalentNode">
+<img src="https://img.shields.io/badge/📂_GitHub-Repository-181717?style=for-the-badge&logo=github">
+</a>
 
-The platform enables organizations to publish opportunities, evaluate applicants, manage hiring pipelines, and build long-term talent networks while providing candidates with an intuitive experience for discovering and applying to jobs.
+<a href="https://saifulislam.vercel.app">
+<img src="https://img.shields.io/badge/💼_Portfolio-Visit-0ea5e9?style=for-the-badge">
+</a>
 
-Designed using modern engineering practices, TalentNode emphasizes scalability, maintainability, security, and performance, making it suitable as both a production-ready SaaS foundation and an enterprise-grade portfolio project.
+<a href="https://linkedin.com/in/YOUR-LINKEDIN">
+<img src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin">
+</a>
 
----
-
-## ✨ Highlights
-
-- 🤖 AI-powered recruitment workflows
-- 👥 Recruiter & Candidate dashboards
-- 🔐 JWT Authentication & Role-Based Authorization
-- 📄 Resume & Profile Management
-- 📊 Recruitment Analytics
-- 🔍 Advanced Search & Filtering
-- 💬 Notification System
-- 📅 Interview Scheduling
-- 📈 Hiring Reports
-- ⚡ Responsive Modern UI
-- ☁️ Cloud Deployment Ready
-- 🏗️ Modular Scalable Architecture
+</p>
 
 ---
 
-## 🎯 Project Goals
+# 📸 Project Preview
 
-TalentNode was built to demonstrate enterprise-level software engineering practices while solving real-world recruitment challenges.
+> Replace these placeholders with actual screenshots after deployment.
 
-The primary objectives include:
+<p align="center">
 
-- Building a scalable MERN-based architecture
-- Demonstrating clean project organization
-- Implementing secure authentication
-- Designing reusable UI components
-- Integrating AI into recruitment workflows
-- Creating an extensible backend API
-- Following modern frontend development practices
-- Preparing the project for production deployment
+<img src="./assets/home.png" width="85%"/>
+
+</p>
+
+| Landing Page | Recruiter Dashboard |
+|---------------|--------------------|
+| ![](./assets/home.png) | ![](./assets/dashboard.png) |
+
+| Candidate Dashboard | Analytics |
+|----------------------|-----------|
+| ![](./assets/candidate.png) | ![](./assets/analytics.png) |
 
 ---
+
+# ✨ Overview
+
+TalentNode is a modern AI-powered recruitment platform engineered to streamline the complete hiring lifecycle for recruiters, organizations, and job seekers.
+
+Unlike conventional job portals that only publish vacancies, TalentNode creates an intelligent recruitment ecosystem where hiring teams can discover talent, manage candidates, analyze recruitment metrics, schedule interviews, and leverage AI-powered workflows from a single platform.
+
+The project follows modern software engineering principles including modular architecture, reusable components, secure authentication, scalable backend services, cloud-ready deployment, and maintainable code organization.
+
+Its primary objective is to demonstrate production-level Full Stack engineering while solving real-world recruitment challenges.
+
+---
+
+# 🌟 Why TalentNode?
+
+Finding the right candidate is becoming increasingly difficult as companies receive hundreds of applications for every job posting.
+
+Traditional recruitment systems often suffer from:
+
+- Manual candidate screening
+- Fragmented hiring workflows
+- Poor recruiter collaboration
+- Limited analytics
+- Time-consuming profile management
+- Minimal automation
+
+TalentNode addresses these challenges by combining AI-assisted recruitment with a modern full-stack architecture, enabling recruiters to make faster, data-driven hiring decisions while providing candidates with a seamless application experience.
+
+---
+
+# 🚀 Core Features
+
+## 👨‍💼 Recruiter Experience
+
+- Company Dashboard
+- Job Management
+- Candidate Tracking
+- Recruitment Analytics
+- Interview Scheduling
+- Application Review
+- Notifications
+- Reports
+- Search & Filtering
+
+---
+
+## 👨‍💻 Candidate Experience
+
+- Secure Registration
+- Professional Profile Builder
+- Resume Upload
+- Job Discovery
+- One-Click Applications
+- Saved Jobs
+- Application Tracking
+- Notification Center
+
+---
+
+## 🤖 AI Capabilities
+
+- AI-powered assistance
+- Intelligent recruitment workflows
+- Automated content generation
+- Smart recommendations
+- Future-ready AI integrations
+
+---
+
+## 🔒 Enterprise Features
+
+- JWT Authentication
+- Role-Based Access Control
+- Password Encryption
+- Protected APIs
+- Cloud Deployment
+- Responsive Design
+- RESTful Architecture
+
+---
+
+# 📊 Project Highlights
+
+| Category | Details |
+|------------|----------|
+| 🎯 Domain | HR Tech |
+| 🏗 Architecture | Full Stack MERN |
+| 🤖 AI | Google Generative AI |
+| 🔐 Authentication | JWT |
+| ⚡ Backend | Express.js |
+| ⚛ Frontend | Next.js 16 |
+| 🗄 Database | MongoDB |
+| 📡 API | REST |
+| ☁ Deployment | Vercel + Render |
+| 📱 Responsive | ✅ |
+| 🔍 Search | Advanced |
+| 📈 Analytics | Included |
+
+---
+
+# 🛠 Tech Stack
+
+| Layer | Technologies |
+|---------|--------------|
+| Frontend | Next.js 16, React 19, Tailwind CSS |
+| Backend | Node.js, Express.js |
+| Database | MongoDB, Mongoose |
+| Authentication | JWT, bcrypt |
+| AI | Google Generative AI |
+| State Management | TanStack Query |
+| Deployment | Vercel, Render |
+| Version Control | Git & GitHub |
+
+---
+
+> **TalentNode isn't just another MERN project—it's an enterprise-inspired recruitment platform designed to demonstrate scalable architecture, clean engineering practices, and modern AI-assisted hiring workflows.**
