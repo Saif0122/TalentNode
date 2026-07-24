@@ -6,7 +6,12 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useJob, useDeleteJob } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useCandidates } from '@/hooks/useCandidates';
-import { applicationApi, candidateApi } from '@/lib/api';
+import { applicationApi, candidateApi, jobApi } from '@/lib/api';
+import Link from 'next/link';
+import { Button, Badge, Card } from '@/components/ui';
+import { cn } from '@/lib/utils';
+import { JobRankingList } from '@/components/job/JobRankingList';
+import { JobRequestList } from '@/components/candidate/JobRequestList';
 
 export default function JobDetailPage() {
   const params = useParams();

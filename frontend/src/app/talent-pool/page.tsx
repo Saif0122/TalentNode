@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { TalentPoolFilters } from '@/components/candidate/TalentPoolFilters';
 import { useCandidates } from '@/hooks/useCandidates';
-import { candidateApi } from '@/lib/api';
+import api, { candidateApi } from '@/lib/api';
 import { Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
