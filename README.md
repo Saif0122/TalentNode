@@ -55,7 +55,25 @@ Build meaningful connections between recruiters and exceptional talent through a
 
 # 📸 Project Preview
 
+<<<<<<< HEAD
 | ![](./frontend/assets/dashboard.png) | ![](./frontend/assets/search.png) |
+=======
+> Replace these placeholders with actual screenshots after deployment.
+
+<p align="center">
+
+<img src="./assets/home.png" width="85%"/>
+
+</p>
+
+| Landing Page | Recruiter Dashboard |
+|---------------|--------------------|
+| ![](./assets/home.png) | ![](./assets/dashboard.png) |
+
+| Candidate Dashboard | Analytics |
+|----------------------|-----------|
+| ![](./assets/candidate.png) | ![](./assets/analytics.png) |
+>>>>>>> db4c9d96fa7a21f87821d2d03e255cc78c19e381
 
 ---
 

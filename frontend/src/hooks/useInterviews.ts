@@ -28,6 +28,7 @@ export const useCreateInterview = () => {
       endTime: string;
       duration: number;
       description?: string;
+      meetingLink?: string;
     }) => {
       const response = await api.post('/scheduling/create', interviewData);
       return response.data.data;
